@@ -108,15 +108,15 @@ router.post('/:appName/deployments/:deploymentName/release', middleware.checkTok
   });
 });
 
-router.post('/:appId/deployments/:deploymentId/promote/:toDeploymentId', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeploymentName', middleware.checkToken, function (req, res, next) {
   res.send('ok');
 });
 
-router.post('/:appId/deployments/:deploymentId/rollback', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/deployments/:deploymentName/rollback', middleware.checkToken, function (req, res, next) {
   res.send('ok');
 });
 
-router.post('/:appId/deployments/:deploymentId/rollback/:label', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/deployments/:deploymentName/rollback/:label', middleware.checkToken, function (req, res, next) {
   res.send('ok');
 });
 
