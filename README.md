@@ -33,7 +33,7 @@ Use code-push-cli manager CodePushServer
 
 ```shell
 $ npm i code-push-cli@1.7.0-beta -g
-$ code-push login http://127.0.0.1:3000 #login in browser acount:admin password:123456
+$ code-push login http://127.0.0.1:3000 #login in browser account:admin password:123456
 ```
 
 [code-push-cli source](https://github.com/Microsoft/code-push)
@@ -45,7 +45,7 @@ npm i react-native-code-push@1.8.0-beta -g
 ```
 
 ## config react-native project
-follow the react-native-code-push doc, additoin iOS add a new entry named CodePushServerURL, whose value is the key of ourself CodePushServer URL. Andriod change com.microsoft.codepush.react.CodePush serverUrl to ourself.
+follow the react-native-code-push doc, addition iOS add a new entry named CodePushServerURL, whose value is the key of ourself CodePushServer URL. Andriod change com.microsoft.codepush.react.CodePush serverUrl to ourself.
 
 [react-native-code-push source](https://github.com/Microsoft/react-native-code-push)
 
