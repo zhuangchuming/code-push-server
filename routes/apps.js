@@ -11,7 +11,8 @@ var AppManager = require('../core/services/app-manager');
 var PackageManager = require('../core/services/package-manager');
 var os = require('os');
 
-router.get('/', middleware.checkToken, function(req, res, next) {
+router.get('/',
+  middleware.checkToken, function(req, res, next) {
   var uid = req.users.id;
   var appManager = new AppManager();
   appManager.listApps(uid).then(function (data) {
@@ -21,7 +22,8 @@ router.get('/', middleware.checkToken, function(req, res, next) {
   });
 });
 
-router.get('/:appName/deployments', middleware.checkToken, function (req, res, next) {
+router.get('/:appName/deployments',
+  middleware.checkToken, function (req, res, next) {
   var uid = req.users.id;
   var appName = _.trim(req.params.appName);
   var deployments = new Deployments();
@@ -34,7 +36,8 @@ router.get('/:appName/deployments', middleware.checkToken, function (req, res, n
   });
 });
 
-router.post('/:appName/deployments', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/deployments',
+  middleware.checkToken, function (req, res, next) {
   var uid = req.users.id;
   var appName = _.trim(req.params.appName);
   var name = req.body.name;
@@ -49,15 +52,18 @@ router.post('/:appName/deployments', middleware.checkToken, function (req, res, 
   });
 });
 
-router.get('/:appId/deployments/:deploymentId/metrics',middleware.checkToken, function (req, res, next) {
+router.get('/:appName/deployments/:deploymentName/metrics',
+  middleware.checkToken, function (req, res, next) {
   res.send({"metrics":{"v1":{"active":0,"downloaded":3,"failed":0,"installed":3},"v4":{"active":0,"downloaded":1,"failed":0,"installed":1},"v5":{"active":0,"downloaded":1,"failed":0,"installed":1},"v7":{"active":0,"downloaded":1,"failed":0,"installed":1},"v10":{"active":0,"downloaded":1,"failed":0,"installed":1},"v12":{"active":1,"downloaded":1,"failed":0,"installed":1},"v13":{"active":1,"downloaded":1,"failed":0,"installed":1}}});
 });
 
-router.get('/:appId/deployments/:deploymentId/packageHistory', middleware.checkToken, function (req, res, next) {
+router.get('/:appName/deployments/:deploymentName/packageHistory',
+  middleware.checkToken, function (req, res, next) {
   res.send('ok');
 });
 
-router.patch('/:appName/deployments/:deploymentName', middleware.checkToken, function (req, res, next) {
+router.patch('/:appName/deployments/:deploymentName',
+  middleware.checkToken, function (req, res, next) {
   var name = req.body.name;
   var appName = _.trim(req.params.appName);
   var deploymentName = req.params.deploymentName;
@@ -72,7 +78,8 @@ router.patch('/:appName/deployments/:deploymentName', middleware.checkToken, fun
   });
 });
 
-router.delete('/:appName/deployments/:deploymentName', middleware.checkToken, function (req, res, next) {
+router.delete('/:appName/deployments/:deploymentName',
+  middleware.checkToken, function (req, res, next) {
   var appName = _.trim(req.params.appName);
   var deploymentName = req.params.deploymentName;
   var uid = req.users.id;
@@ -86,9 +93,10 @@ router.delete('/:appName/deployments/:deploymentName', middleware.checkToken, fu
   });
 });
 
-router.post('/:appName/deployments/:deploymentName/release', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/deployments/:deploymentName/release',
+  middleware.checkToken, function (req, res, next) {
   var appName = _.trim(req.params.appName);
-  var deploymentName = req.params.deploymentName;
+  var deploymentName = _.trim(req.params.deploymentName);
   var uid = req.users.id;
   var deployments = new Deployments();
   var packageManager = new PackageManager();
@@ -108,19 +116,49 @@ router.post('/:appName/deployments/:deploymentName/release', middleware.checkTok
   });
 });
 
-router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeploymentName', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeploymentName',
+  middleware.checkToken, function (req, res, next) {
+  var appName = _.trim(req.params.appName);
+  var sourceDeploymentName = _.trim(req.params.sourceDeploymentName);
+  var destDeploymentName = _.trim(req.params.destDeploymentName);
+  var uid = req.users.id;
+  var packageManager = new PackageManager();
+  var deployments = new Deployments();
+  accountManager.collaboratorCan(uid, appName).then(function (col) {
+    var appId = col.appid;
+    return Q.allSettled([
+      deployments.findDeloymentByName(sourceDeploymentName, appId),
+      deployments.findDeloymentByName(destDeploymentName, appId)
+    ]).spread(function (sourceDeploymentInfo, destDeploymentInfo) {
+      if (_.isEmpty(sourceDeploymentInfo.value)) {
+        throw new Error(sourceDeploymentName + " does not exist.");
+      }
+      if (_.isEmpty(destDeploymentInfo.value)) {
+        throw new Error(destDeploymentName + " does not exist.");
+      }
+      return [sourceDeploymentInfo.value.id, destDeploymentInfo.value.id];
+    }).spread(function (sourceDeploymentId, destDeploymentId) {
+      return deployments.promote(sourceDeploymentId, destDeploymentId);
+    });
+  }).then(function () {
+    res.send('ok');
+  }).catch(function (e) {
+    res.status(406).send(e.message);
+  });
+});
+
+router.post('/:appName/deployments/:deploymentName/rollback',
+  middleware.checkToken, function (req, res, next) {
   res.send('ok');
 });
 
-router.post('/:appName/deployments/:deploymentName/rollback', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/deployments/:deploymentName/rollback/:label',
+  middleware.checkToken, function (req, res, next) {
   res.send('ok');
 });
 
-router.post('/:appName/deployments/:deploymentName/rollback/:label', middleware.checkToken, function (req, res, next) {
-  res.send('ok');
-});
-
-router.get('/:appName/collaborators', middleware.checkToken, function (req, res, next) {
+router.get('/:appName/collaborators',
+  middleware.checkToken, function (req, res, next) {
   var appName = _.trim(req.params.appName);
   var uid = req.users.id;
   var collaborators = new Collaborators();
@@ -142,7 +180,8 @@ router.get('/:appName/collaborators', middleware.checkToken, function (req, res,
   });
 });
 
-router.post('/:appName/collaborators/:email', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/collaborators/:email',
+  middleware.checkToken, function (req, res, next) {
   var appName = _.trim(req.params.appName);
   var email = _.trim(req.params.email);
   var uid = req.users.id;
@@ -161,7 +200,8 @@ router.post('/:appName/collaborators/:email', middleware.checkToken, function (r
   });
 });
 
-router.delete('/:appName/collaborators/:email', middleware.checkToken, function (req, res, next) {
+router.delete('/:appName/collaborators/:email',
+  middleware.checkToken, function (req, res, next) {
   var appName = _.trim(req.params.appName);
   var email = _.trim(decodeURI(req.params.email));
   var uid = req.users.id;
@@ -184,7 +224,8 @@ router.delete('/:appName/collaborators/:email', middleware.checkToken, function 
   });
 });
 
-router.delete('/:appName', middleware.checkToken, function (req, res, next) {
+router.delete('/:appName',
+  middleware.checkToken, function (req, res, next) {
   var appName = _.trim(req.params.appName);
   var uid = req.users.id;
   var appManager = new AppManager();
@@ -197,7 +238,8 @@ router.delete('/:appName', middleware.checkToken, function (req, res, next) {
   });
 });
 
-router.patch('/:appName', middleware.checkToken, function (req, res, next) {
+router.patch('/:appName',
+  middleware.checkToken, function (req, res, next) {
   var newAppName = _.trim(req.body.name);
   var appName = _.trim(req.params.appName);
   var uid = req.users.id;
@@ -221,7 +263,8 @@ router.patch('/:appName', middleware.checkToken, function (req, res, next) {
   }
 });
 
-router.post('/:appName/transfer/:email', middleware.checkToken, function (req, res, next) {
+router.post('/:appName/transfer/:email',
+  middleware.checkToken, function (req, res, next) {
   var appName = _.trim(req.params.appName);
   var email = _.trim(req.params.email);
   var uid = req.users.id;

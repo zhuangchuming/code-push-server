@@ -11,6 +11,31 @@ var proto = module.exports = function (){
   return Deployments;
 };
 
+proto.promote = function (sourceDeploymentId, destDeploymentId) {
+  return models.Deployments.findById(sourceDeploymentId).then(function (sourceDeployment) {
+    var lastDeploymentVersionId = _.get(sourceDeployment, 'last_deployment_version_id', 0);
+    if (_.lte(lastDeploymentVersionId, 0)) {
+      throw new Error('does not exist last_deployment_version_id.');
+    }
+    return models.DeploymentsVersions.findById(lastDeploymentVersionId)
+    .then(function (deploymentsVersions) {
+      var packageId = _.get(deploymentsVersions, 'current_package_id', 0);
+      if (_.lte(packageId, 0)) {
+        throw new Error('does not exist packages.');
+      }
+      return models.Packages.findById(packageId)
+      .then(function (packages) {
+        if (_.isEmpty(packages)) {
+          throw new Error('does not exist packages.');
+        }
+        return [deploymentsVersions, packages]
+      })
+    });
+  }).spread(function (deploymentsVersions, packages) {
+    return deploymentsVersions;
+  });
+};
+
 proto.existDeloymentName = function (appId, name) {
   return models.Deployments.findOne({where: {appid: appId, name: name}}).then(function (data) {
     if (!_.isEmpty(data)){
@@ -35,7 +60,7 @@ proto.addDeloyment = function (name, appId, uid) {
         appid: appId,
         name: name,
         deployment_key: deploymentKey,
-        last_deployment_version_id:0,
+        last_deployment_version_id: 0,
         label_id: 0
       });
     });

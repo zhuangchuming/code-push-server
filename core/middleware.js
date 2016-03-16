@@ -13,19 +13,22 @@ var middleware = module.exports = {
       models.Users.findOne({
         where: {identical: objToken.identical}
       }).then(function(users) {
-        req.users = users;
         if (_.isEmpty(users)) {
           throw new Error('401 Unauthorized');
         }
-        return models.UserTokens.findOne({where: {tokens:authToken, uid:users.id}}).then(function(tokenInfo){
+        return models.UserTokens.findOne({
+          where: {tokens: authToken, uid: users.id}
+        }).then(function(tokenInfo){
           if (_.isEmpty(tokenInfo)){
             throw new Error('401 Unauthorized')
           } else {
             req.users = users;
-            next();
           }
           return tokenInfo;
-        });
+        })
+      }).then(function (data) {
+        next();
+        return data;
       }).catch(function (e) {
         res.status(401).send(e.message);
       });

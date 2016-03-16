@@ -155,25 +155,38 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
     }).then(function (manifestHash) {
       return models.Deployments.generateLabelId(deploymentId).then(function (labelId) {
         var stats = fs.statSync(filePath);
-        return models.Packages.create({
-          deployment_id: deploymentId,
-          description: description,
-          package_hash: manifestHash,
-          blob_url: packageHash,
-          size: stats.size,
-          manifest_blob_url: manifestHash,
-          release_method: 'Upload',
-          label: "v" + labelId,
-          released_by: releaseUid
+        return models.sequelize.transaction(function (t) {
+          return models.Packages.create({
+            deployment_id: deploymentId,
+            description: description,
+            package_hash: manifestHash,
+            blob_url: packageHash,
+            size: stats.size,
+            manifest_blob_url: manifestHash,
+            release_method: 'Upload',
+            label: "v" + labelId,
+            released_by: releaseUid
+          },{transaction: t
+          }).then(function (packages) {
+            return models.DeploymentsVersions.update(
+              {is_mandatory: isMandatory, current_package_id: packages.id},
+              {where: {deployment_id: deploymentId, app_version: appVersion}, transaction: t
+            }).spread(function (affectRow) {
+              if (_.lte(affectRow, 0)) {
+                throw Error('deploy error.');
+              }
+              return models.DeploymentsVersions.findOne({where: {deployment_id: deploymentId, app_version: appVersion}});
+            }).then(function (deploymentsVersions) {
+                if (_.isEmpty(deploymentsVersions)){
+                  throw new Error('empty versions.');
+                }
+                return models.Deployments.update({
+                  last_deployment_version_id: deploymentsVersions.id
+                },{where: {id: deploymentId}, transaction: t});
+            });
+          });
         });
       });
-    }).then(function (data) {
-      return models.DeploymentsVersions.update({
-        is_mandatory: isMandatory,
-        current_package_id: data.id
-      },{
-        where: {deployment_id: deploymentId, app_version: appVersion}
-      });
-    })
+    });
   });
 };
