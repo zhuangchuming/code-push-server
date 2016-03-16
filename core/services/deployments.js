@@ -28,8 +28,21 @@ proto.promote = function (sourceDeploymentId, destDeploymentId) {
         if (_.isEmpty(packages)) {
           throw new Error('does not exist packages.');
         }
-        return [deploymentsVersions, packages]
-      })
+        return models.DeploymentsVersions.findOne({
+          where: {deployment_id: destDeploymentId, app_version:deploymentsVersions.app_version}}).then(function (data) {
+          if (!_.isEmpty(data)) {
+            return models.Packages.findById(data.current_package_id).then(function (pa) {
+              if (_.eq(_.get(pa, 'package_hash'), packages.package_hash)) {
+                throw new Error("The uploaded package is identical to the contents of the specified deployment's current release.");
+              }
+              return {};
+            });
+          }
+          return {};
+        }).then(function () {
+          return [deploymentsVersions, packages];
+        });
+      });
     });
   }).spread(function (deploymentsVersions, packages) {
     return deploymentsVersions;
