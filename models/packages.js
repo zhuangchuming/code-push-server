@@ -16,6 +16,8 @@ module.exports = function(sequelize, DataTypes) {
     manifest_blob_url: DataTypes.STRING,
     release_method: DataTypes.STRING,
     label: DataTypes.STRING,
+    original_label: DataTypes.STRING,
+    original_deployment: DataTypes.STRING,
     released_by: DataTypes.STRING,
     created_at: DataTypes.TIME,
     updated_at: DataTypes.TIME,

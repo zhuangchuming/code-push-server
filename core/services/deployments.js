@@ -41,17 +41,19 @@ proto.promote = function (sourceDeploymentId, destDeploymentId, promoteUid) {
           }
           return {};
         }).then(function () {
-          return [deploymentsVersions, packages];
+          return [sourceDeployment, deploymentsVersions, packages];
         });
       });
     });
-  }).spread(function (deploymentsVersions, packages) {
+  }).spread(function (sourceDeployment, deploymentsVersions, packages) {
     var params = {
       releaseMethod: 'Promote',
       releaseUid: promoteUid,
       isMandatory: deploymentsVersions.is_mandatory,
       size: packages.size,
-      description: packages.description
+      description: packages.description,
+      originalLabel: packages.label,
+      originalDeployment: sourceDeployment.name
     };
     var packageManager = new PackageManager();
     return packageManager.createPackage(destDeploymentId, deploymentsVersions.app_version, packages.blob_url, packages.package_hash, params);

@@ -127,6 +127,8 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
   var isMandatory = params.isMandatory ? 1 : 0;
   var size = params.size || 0;
   var description = params.description || "";
+  var originalLabel = params.originalLabel || "";
+  var originalDeployment = params.originalDeployment || "";
   return models.Deployments.generateLabelId(deploymentId).then(function (labelId) {
     return models.sequelize.transaction(function (t) {
       return models.Packages.create({
@@ -138,7 +140,9 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
         manifest_blob_url: manifestHash,
         release_method: releaseMethod,
         label: "v" + labelId,
-        released_by: releaseUid
+        released_by: releaseUid,
+        original_label: originalLabel,
+        original_deployment: originalDeployment
       },{transaction: t
       }).then(function (packages) {
         return models.DeploymentsVersions.update(
