@@ -18,6 +18,7 @@
     "morgan": "~1.6.1",
     "mysql": "^2.10.2",
     "node-qiniu": "^6.2.0",
+    "node-unzip-2": "^0.2.1",
     "q": "^1.4.1",
     "rand-token": "^0.2.1",
     "recursive-fs": "^0.1.4",
@@ -27,7 +28,6 @@
     "serve-favicon": "~2.3.0",
     "slash": "^1.0.0",
     "sort-object": "^3.0.2",
-    "unzip": "^0.1.11",
     "validator": "^5.0.0",
     "yazl": "^2.3.0"
   }
