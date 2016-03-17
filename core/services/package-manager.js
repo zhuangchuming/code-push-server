@@ -121,6 +121,47 @@ proto.existPackageHash = function (deploymentId, appVersion, manifestHash) {
   });
 };
 
+proto.createPackage = function (deploymentId, appVersion, packageHash, manifestHash, params) {
+  var releaseMethod = params.releaseMethod || 'Upload';
+  var releaseUid = params.releaseUid || 0;
+  var isMandatory = params.isMandatory ? 1 : 0;
+  var size = params.size || 0;
+  var description = params.description || "";
+  return models.Deployments.generateLabelId(deploymentId).then(function (labelId) {
+    return models.sequelize.transaction(function (t) {
+      return models.Packages.create({
+        deployment_id: deploymentId,
+        description: description,
+        package_hash: manifestHash,
+        blob_url: packageHash,
+        size: size,
+        manifest_blob_url: manifestHash,
+        release_method: releaseMethod,
+        label: "v" + labelId,
+        released_by: releaseUid
+      },{transaction: t
+      }).then(function (packages) {
+        return models.DeploymentsVersions.update(
+          {is_mandatory: isMandatory, current_package_id: packages.id},
+          {where: {deployment_id: deploymentId, app_version: appVersion}, transaction: t
+        }).spread(function (affectRow) {
+          if (_.lte(affectRow, 0)) {
+            throw Error('deploy error.');
+          }
+          return models.DeploymentsVersions.findOne({where: {deployment_id: deploymentId, app_version: appVersion}});
+        }).then(function (deploymentsVersions) {
+            if (_.isEmpty(deploymentsVersions)){
+              throw new Error('empty versions.');
+            }
+            return models.Deployments.update({
+              last_deployment_version_id: deploymentsVersions.id
+            },{where: {id: deploymentId}, transaction: t});
+        });
+      });
+    });
+  });
+};
+
 proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, releaseUid) {
   var _this = this;
   var appVersion = packageInfo.appVersion;
@@ -141,10 +182,11 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
         return security.qetag(hashFile).then(function (manifestHash) {
           return _this.existPackageHash(deploymentId, appVersion, manifestHash).then(function (isExist) {
             if (!isExist){
-              return common.uploadFileToQiniu(manifestHash, hashFile).then(function () {
-                return common.uploadFileToQiniu(packageHash, filePath).then(function () {
-                  return manifestHash;
-                });
+              return Q.allSettled([
+                common.uploadFileToQiniu(manifestHash, hashFile),
+                common.uploadFileToQiniu(packageHash, filePath)
+              ]).spread(function (up1, up2) {
+                return manifestHash;
               });
             } else {
               throw new Error("The uploaded package is identical to the contents of the specified deployment's current release.");
@@ -153,40 +195,15 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
         });
       });
     }).then(function (manifestHash) {
-      return models.Deployments.generateLabelId(deploymentId).then(function (labelId) {
-        var stats = fs.statSync(filePath);
-        return models.sequelize.transaction(function (t) {
-          return models.Packages.create({
-            deployment_id: deploymentId,
-            description: description,
-            package_hash: manifestHash,
-            blob_url: packageHash,
-            size: stats.size,
-            manifest_blob_url: manifestHash,
-            release_method: 'Upload',
-            label: "v" + labelId,
-            released_by: releaseUid
-          },{transaction: t
-          }).then(function (packages) {
-            return models.DeploymentsVersions.update(
-              {is_mandatory: isMandatory, current_package_id: packages.id},
-              {where: {deployment_id: deploymentId, app_version: appVersion}, transaction: t
-            }).spread(function (affectRow) {
-              if (_.lte(affectRow, 0)) {
-                throw Error('deploy error.');
-              }
-              return models.DeploymentsVersions.findOne({where: {deployment_id: deploymentId, app_version: appVersion}});
-            }).then(function (deploymentsVersions) {
-                if (_.isEmpty(deploymentsVersions)){
-                  throw new Error('empty versions.');
-                }
-                return models.Deployments.update({
-                  last_deployment_version_id: deploymentsVersions.id
-                },{where: {id: deploymentId}, transaction: t});
-            });
-          });
-        });
-      });
+      var stats = fs.statSync(filePath);
+      var params = {
+        releaseMethod: 'Upload',
+        releaseUid: releaseUid,
+        isMandatory: isMandatory,
+        size: stats.size,
+        description: description
+      }
+      return _this.createPackage(deploymentId, appVersion, packageHash, manifestHash, params);
     });
   });
 };

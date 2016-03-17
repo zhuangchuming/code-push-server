@@ -138,7 +138,7 @@ router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeployment
       }
       return [sourceDeploymentInfo.value.id, destDeploymentInfo.value.id];
     }).spread(function (sourceDeploymentId, destDeploymentId) {
-      return deployments.promote(sourceDeploymentId, destDeploymentId);
+      return deployments.promote(sourceDeploymentId, destDeploymentId, uid);
     });
   }).then(function () {
     res.send('ok');

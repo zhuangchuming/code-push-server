@@ -1,6 +1,7 @@
 'use strict';
 var models = require('../../models');
 var security = require('../../core/utils/security');
+var PackageManager = require('./package-manager');
 var _ = require('lodash');
 
 var proto = module.exports = function (){
@@ -11,7 +12,7 @@ var proto = module.exports = function (){
   return Deployments;
 };
 
-proto.promote = function (sourceDeploymentId, destDeploymentId) {
+proto.promote = function (sourceDeploymentId, destDeploymentId, promoteUid) {
   return models.Deployments.findById(sourceDeploymentId).then(function (sourceDeployment) {
     var lastDeploymentVersionId = _.get(sourceDeployment, 'last_deployment_version_id', 0);
     if (_.lte(lastDeploymentVersionId, 0)) {
@@ -29,7 +30,7 @@ proto.promote = function (sourceDeploymentId, destDeploymentId) {
           throw new Error('does not exist packages.');
         }
         return models.DeploymentsVersions.findOne({
-          where: {deployment_id: destDeploymentId, app_version:deploymentsVersions.app_version}}).then(function (data) {
+          where: {deployment_id: destDeploymentId, app_version: deploymentsVersions.app_version}}).then(function (data) {
           if (!_.isEmpty(data)) {
             return models.Packages.findById(data.current_package_id).then(function (pa) {
               if (_.eq(_.get(pa, 'package_hash'), packages.package_hash)) {
@@ -45,7 +46,15 @@ proto.promote = function (sourceDeploymentId, destDeploymentId) {
       });
     });
   }).spread(function (deploymentsVersions, packages) {
-    return deploymentsVersions;
+    var params = {
+      releaseMethod: 'Promote',
+      releaseUid: promoteUid,
+      isMandatory: deploymentsVersions.is_mandatory,
+      size: packages.size,
+      description: packages.description
+    };
+    var packageManager = new PackageManager();
+    return packageManager.createPackage(destDeploymentId, deploymentsVersions.app_version, packages.blob_url, packages.package_hash, params);
   });
 };
 
