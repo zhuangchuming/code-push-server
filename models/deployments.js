@@ -31,7 +31,7 @@ module.exports = function(sequelize, DataTypes) {
               throw new Error("does not find deployment");
             }
             data.label_id = data.label_id + 1;
-            return data.save({transaction: t,lock: t.LOCK.UPDATE}).then(function (data) {
+            return data.save({transaction: t}).then(function (data) {
               return data.label_id;
             });
           });
