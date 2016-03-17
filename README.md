@@ -1,11 +1,11 @@
 # CodePushServer
 
-CodePushServer is a CodePush progam server! microsoft CodePush cloud is slow in China, we can use this to build our's cloud server. I use [qiniu](http://www.qiniu.com/) to store the file, becouse of it simple and quick! Just thanks microsoft
+CodePushServer is a CodePush progam server! microsoft CodePush cloud is slow in China, we can use this to build our's cloud server. I use [qiniu](http://www.qiniu.com/) to store the files, because of it simple and quick! Just thanks microsoft
 
 ## INSTALL
 
 ```shell
-$ cd path/to/code-push-server
+$ cd /path/to/code-push-server
 $ mysql -uroot -e"create database codepush default charset utf8;"
 $ mysql -uroot codepush < ./codepush.sql
 $ npm install
@@ -45,7 +45,7 @@ npm i react-native-code-push@1.8.0-beta -g
 ```
 
 ## config react-native project
-follow the react-native-code-push doc, addition iOS add a new entry named CodePushServerURL, whose value is the key of ourself CodePushServer URL. Andriod change com.microsoft.codepush.react.CodePush serverUrl to ourself.
+Follow the react-native-code-push docs, addition iOS add a new entry named CodePushServerURL, whose value is the key of ourself CodePushServer URL. Andriod change com.microsoft.codepush.react.CodePush serverUrl to ourself.
 
 [react-native-code-push source](https://github.com/Microsoft/react-native-code-push)
 
