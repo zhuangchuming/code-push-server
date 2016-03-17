@@ -152,6 +152,8 @@ CREATE TABLE `packages` (
   `manifest_blob_url` varchar(255) NOT NULL DEFAULT '',
   `release_method` varchar(20) NOT NULL DEFAULT '',
   `label` varchar(20) NOT NULL DEFAULT '',
+  `original_label` varchar(20) NOT NULL DEFAULT '',
+  `original_deployment` varchar(20) NOT NULL DEFAULT '',
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `released_by` bigint(20) unsigned NOT NULL,
