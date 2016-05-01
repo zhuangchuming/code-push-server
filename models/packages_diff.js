@@ -14,7 +14,6 @@ module.exports = function(sequelize, DataTypes) {
     diff_size: DataTypes.INTEGER(10),
     created_at: DataTypes.TIME,
     updated_at: DataTypes.TIME,
-    is_near: DataTypes.INTEGER(3),
   }, {
     tableName: 'packages_diff',
     underscored: true,

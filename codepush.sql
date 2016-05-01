@@ -186,7 +186,6 @@ CREATE TABLE `packages_diff` (
   `diff_size` int(11) unsigned NOT NULL DEFAULT '0',
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `is_near` tinyint(3) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_packageid_hash` (`package_id`,`diff_against_package_hash`(40))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

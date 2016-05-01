@@ -135,7 +135,7 @@ proto.findPackagesAndUserInfos = function (packageIds) {
       return result;
     }, []);
     return models.PackagesDiff.findAll({
-      where: {package_id: {in: packageIds}, is_near: 1}
+      where: {package_id: {in: packageIds}}
     }).then(function (packagesDiffInfos) {
       var tmpDiff = _.reduce(packagesDiffInfos, function(result, value, key) {
         result[value.package_id] = value;

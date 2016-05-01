@@ -6,7 +6,7 @@ var Q = require('q');
 var Promise = Q.Promise;
 var qetag = require('../utils/qetag');
 var randToken = require('rand-token').generator({
-  chars: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_',
+  chars: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
   source: crypto.randomBytes
 });
 var security = module.exports = {

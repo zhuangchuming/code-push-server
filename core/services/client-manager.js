@@ -3,7 +3,7 @@ var Q = require('q');
 var Promise = Q.Promise;
 var models = require('../../models');
 var _ = require('lodash');
-var config    = _.get(require('../config'), 'qiniu', {});
+var config  = _.get(require('../config'), 'qiniu', {});
 
 var proto = module.exports = function (){
   function ClientManager() {

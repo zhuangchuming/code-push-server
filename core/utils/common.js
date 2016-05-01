@@ -11,6 +11,31 @@ var config    = _.get(require('../config'), 'qiniu', {});
 var common = {};
 module.exports = common;
 
+common.createFileFromRequest = function (url, filePath) {
+  return Promise(function (resolve, reject, notify) {
+    fs.exists(filePath, function (exists) {
+      if (!exists) {
+        var request = require('request');
+        request(url).on('error', function (error) {
+          reject(error);
+        }).on('response', function (response) {
+            if (response.statusCode == 200) {
+              let stream = fs.createWriteStream(filePath);
+              response.pipe(stream);
+              stream.on('close',function(){
+                resolve(null);
+              });
+            } else {
+              reject({message:'request fail'})
+            }
+        });
+      }else {
+        resolve(null);
+      }
+    });
+  });
+}
+
 common.deleteFolder = function (folderPath) {
   return Promise(function (resolve, reject, notify) {
     rimraf(folderPath, function (err) {
@@ -70,4 +95,23 @@ common.uploadFileToQiniu = function (key, filePath) {
       }
     });
   });
+};
+
+common.diffCollections = function (collection1, collection2) {
+  var diffFiles = [];
+  var collection1Only = [];
+  var newCollection2 = Object.assign({}, collection2);
+  if (collection1 instanceof Object) {
+    for(var key of Object.keys(collection1)) {
+      if (_.isEmpty(newCollection2[key])) {
+        collection1Only.push(key);
+      } else {
+        if (!_.eq(collection1[key], newCollection2[key])) {
+          diffFiles.push(key);
+        }
+        delete newCollection2[key];
+      }
+    }
+  }
+  return {diff:diffFiles, collection1Only: collection1Only, collection2Only: Object.keys(newCollection2)}
 };

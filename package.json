@@ -22,6 +22,7 @@
     "q": "^1.4.1",
     "rand-token": "^0.2.1",
     "recursive-fs": "^0.1.4",
+    "request": "^2.72.0",
     "rimraf": "^2.5.2",
     "sequelize": "^3.19.3",
     "sequelize-cli": "^2.3.1",
