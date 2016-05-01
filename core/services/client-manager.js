@@ -41,18 +41,28 @@ proto.updateCheck = function(deploymentKey, appVersion, label, packageHash) {
       }
       return models.Packages.findById(packageId).then(function (packages) {
         if (!_.isEmpty(packages) && !_.eq(_.get(packages, 'package_hash', ""), packageHash)) {
-          rs.downloadURL = _.get(config, 'downloadUrl') + '/' + _.get(packages,'blob_url');
-          rs.description = _.get(packages, 'description', '');
-          rs.isAvailable = true;
-          rs.isMandatory = _.eq(deploymentsVersions.is_mandatory, 1) ? true : false;
-          rs.appVersion = appVersion;
-          rs.packageHash = _.get(packages, 'package_hash', '');
-          rs.label = _.get(packages, 'label', '');
-          rs.packageSize = _.get(packages, 'size', 0);
-          rs.updateAppVersion = false;
+          return models.PackagesDiff.findOne({where: {package_id:packages.id, diff_against_package_hash: packageHash}}).then(function (diffPackage) {
+            rs.downloadURL = _.get(config, 'downloadUrl') + '/' + _.get(packages,'blob_url');
+            rs.description = _.get(packages, 'description', '');
+            rs.isAvailable = true;
+            rs.isMandatory = _.eq(deploymentsVersions.is_mandatory, 1) ? true : false;
+            rs.appVersion = appVersion;
+            rs.packageHash = _.get(packages, 'package_hash', '');
+            rs.label = _.get(packages, 'label', '');
+            rs.packageSize = _.get(packages, 'size', 0);
+            rs.updateAppVersion = false;
+            if (!_.isEmpty(diffPackage)) {
+              console.log(diffPackage);
+              rs.downloadURL = _.get(config, 'downloadUrl') + '/' + _.get(diffPackage, 'diff_blob_url');
+              rs.packageSize = _.get(diffPackage, 'diff_size', 0);
+            }
+          })
+        } else {
+          return null;
         }
       });
-    }).then(function () {
+    })
+    .then(function () {
       resolve(rs);
     }).catch(function (e) {
       reject(e);
