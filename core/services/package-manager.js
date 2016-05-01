@@ -159,6 +159,8 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
             return models.Deployments.update({
               last_deployment_version_id: deploymentsVersions.id
             },{where: {id: deploymentId}, transaction: t});
+        }).then(function () {
+          return packages;
         });
       });
     });
@@ -238,7 +240,7 @@ proto.createDiffPackages = function (packageId, num) {
     if (_.isEmpty(data)) {
       throw Error('can\'t find Package');
     }
-    return models.Packages.findAll({where:{deployment_id: data.deployment_id, id: {$lt: packageId}}, order:[['id','desc']],limit:num }).then(function (lastNumsPackages) {
+    return models.Packages.findAll({where:{deployment_id: data.deployment_id, id: {$lt: packageId}}, order:[['id','desc']], limit:num }).then(function (lastNumsPackages) {
       if (_.isEmpty(lastNumsPackages)) {
         return null;
       }

@@ -75,25 +75,29 @@ common.unzipFile = function (zipFile, outputPath) {
 
 common.uploadFileToQiniu = function (key, filePath) {
   return Promise(function (resolve, reject, notify) {
-    qiniu.config({
-      access_key: _.get(config, "accessKey"),
-      secret_key: _.get(config, "secretKey"),
-    });
-    var bucket = qiniu.bucket(_.get(config, "bucketName", "jukang"));
-    var assets = bucket.key(key);
-    assets.stat(function (err, result) {
-      if (_.isEmpty(result.hash)) {
-        bucket.putFile(key, filePath, function(err, reply) {
-          if (err) {
-            reject({message: "error"});
-          }else {
-            resolve(reply.hash);
-          }
-        });
-      } else {
-        resolve(result.hash);
-      }
-    });
+    try {
+      qiniu.config({
+        access_key: _.get(config, "accessKey"),
+        secret_key: _.get(config, "secretKey"),
+      });
+      var bucket = qiniu.bucket(_.get(config, "bucketName", "jukang"));
+      var assets = bucket.key(key);
+      assets.stat(function (err, result) {
+        if (_.isEmpty(result.hash)) {
+          bucket.putFile(key, filePath, function(err, reply) {
+            if (err) {
+              reject({message: "error"});
+            }else {
+              resolve(reply.hash);
+            }
+          });
+        } else {
+          resolve(result.hash);
+        }
+      });
+    } catch(e) {
+      reject(e)
+    }
   });
 };
 

@@ -107,6 +107,11 @@ router.post('/:appName/deployments/:deploymentName/release',
       }
       return packageManager.parseReqFile(req).then(function (data) {
         return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid);
+      }).then(function (packages) {
+        if (!_.isEmpty(packages)) {
+          packageManager.createDiffPackages(packages.id, 3);
+        }
+        return null;
       });
     });
   }).then(function (data) {

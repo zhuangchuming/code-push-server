@@ -5,14 +5,6 @@ var ClientManager = require('../core/services/client-manager');
 var _ = require('lodash');
 
 router.get('/', function(req, res, next) {
-  var fs = require("fs");
-  var PackageManager = require('../core/services/package-manager');
-  var common = require('../core/utils/common');
-  var packageManager = new PackageManager();
-  var fileContent1 = JSON.parse(fs.readFileSync('/Users/tablee/workspaces/app1.json', "utf8"))
-  var fileContent2 = JSON.parse(fs.readFileSync('/Users/tablee/workspaces/app2.json', "utf8"))
-  var v = common.diffCollections(fileContent1, fileContent2);
-  packageManager.createDiffPackages(4, 3);
   res.render('index', { title: 'CodePushServer' });
 });
 
