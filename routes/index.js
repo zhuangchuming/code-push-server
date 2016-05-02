@@ -19,7 +19,8 @@ router.get('/updateCheck', function(req, res, next){
   var label = _.get(req, "query.label");
   var packageHash = _.get(req, "query.packageHash")
   var clientManager = new ClientManager();
-  clientManager.updateCheck(deploymentKey, appVersion, label, packageHash).then(function (rs) {
+  clientManager.updateCheck(deploymentKey, appVersion, label, packageHash)
+  .then(function (rs) {
     res.send({"updateInfo":rs});
   }).catch(function (e) {
     res.status(404).send(e.message);
@@ -31,7 +32,10 @@ router.post('/reportStatus/download', function(req, res, next){
   var label = _.get(req, "body.label");
   var deploymentKey = _.get(req, "body.deploymentKey");
   var clientManager = new ClientManager();
-  clientManager.reportStatusDownload(deploymentKey, label, clientUniqueId);
+  clientManager.reportStatusDownload(deploymentKey, label, clientUniqueId)
+  .catch(function (e) {
+    console.log(e);
+  });
   res.send('OK');
 });
 
@@ -40,7 +44,10 @@ router.post('/reportStatus/deploy', function(req, res, next){
   var label = _.get(req, "body.label");
   var deploymentKey = _.get(req, "body.deploymentKey");
   var clientManager = new ClientManager();
-  clientManager.reportStatusDeploy(deploymentKey, label, clientUniqueId, req.body);
+  clientManager.reportStatusDeploy(deploymentKey, label, clientUniqueId, req.body)
+  .catch(function (e) {
+    console.log(e);
+  });;
   res.send('OK');
 });
 
