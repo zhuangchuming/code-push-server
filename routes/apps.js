@@ -10,6 +10,7 @@ var Collaborators = require('../core/services/collaborators');
 var AppManager = require('../core/services/app-manager');
 var PackageManager = require('../core/services/package-manager');
 var os = require('os');
+const DIFF_NUMS = 3;
 
 router.get('/',
   middleware.checkToken, function(req, res, next) {
@@ -109,7 +110,7 @@ router.post('/:appName/deployments/:deploymentName/release',
         return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid);
       }).then(function (packages) {
         if (!_.isEmpty(packages)) {
-          packageManager.createDiffPackages(packages.id, 5);
+          packageManager.createDiffPackages(packages.id, DIFF_NUMS);
         }
         return null;
       });
@@ -145,8 +146,13 @@ router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeployment
     }).spread(function (sourceDeploymentId, destDeploymentId) {
       return deployments.promote(sourceDeploymentId, destDeploymentId, uid);
     });
+  }).then(function (packages) {
+    if (!_.isEmpty(packages)) {
+      packageManager.createDiffPackages(packages.id, DIFF_NUMS);
+    }
+    return null;
   }).then(function () {
-    res.send('ok');
+     res.send('ok');
   }).catch(function (e) {
     res.status(406).send(e.message);
   });

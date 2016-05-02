@@ -5,7 +5,7 @@ var rimraf = require('rimraf');
 var mkdirp = require('mkdirp');
 var fs = require("fs");
 var unzip = require('node-unzip-2');
-var qiniu = require("node-qiniu");
+var qiniu = require("qiniu");
 var _ = require('lodash');
 var config    = _.get(require('../config'), 'qiniu', {});
 var common = {};
@@ -64,35 +64,50 @@ common.createEmptyTempFolder = function (folderPath) {
 
 common.unzipFile = function (zipFile, outputPath) {
   return Promise(function (resolve, reject, notify) {
-    var readStream = fs.createReadStream(zipFile);
-    var extract = unzip.Extract({ path: outputPath });
-    readStream.pipe(extract);
-    extract.on("close", function () {
-      resolve(outputPath);
-    });
+    try {
+      fs.exists(zipFile, function(exists){
+        if (!exists) {
+          reject({message: 'zipfile not found!'})
+        }
+        var readStream = fs.createReadStream(zipFile);
+        var extract = unzip.Extract({ path: outputPath });
+        readStream.pipe(extract);
+        extract.on("close", function () {
+          resolve(outputPath);
+        });
+      })
+    } catch (e) {
+      reject({message: 'zipfile not found!'})
+    }
   });
 };
 
+common.uptoken = function (bucket, key) {
+  var putPolicy = new qiniu.rs.PutPolicy(bucket+":"+key);
+  return putPolicy.token();
+}
 common.uploadFileToQiniu = function (key, filePath) {
   return Promise(function (resolve, reject, notify) {
     try {
-      qiniu.config({
-        access_key: _.get(config, "accessKey"),
-        secret_key: _.get(config, "secretKey"),
-      });
-      var bucket = qiniu.bucket(_.get(config, "bucketName", "jukang"));
-      var assets = bucket.key(key);
-      assets.stat(function (err, result) {
-        if (_.isEmpty(result.hash)) {
-          bucket.putFile(key, filePath, function(err, reply) {
-            if (err) {
-              reject({message: "error"});
-            }else {
-              resolve(reply.hash);
+      qiniu.conf.ACCESS_KEY = _.get(config, "accessKey");
+      qiniu.conf.SECRET_KEY = _.get(config, "secretKey");
+      var bucket = _.get(config, "bucketName", "jukang");
+      var client = new qiniu.rs.Client();
+      client.stat(bucket, key, function(err, ret) {
+        if (!err) {
+          resolve(ret.hash);
+        } else {
+          var uptoken = common.uptoken(bucket, key);
+          var extra = new qiniu.io.PutExtra();
+          qiniu.io.putFile(uptoken, key, filePath, extra, function(err, ret) {
+            if(!err) {
+              // 上传成功， 处理返回值
+              resolve(ret.hash);
+            } else {
+              // 上传失败， 处理返回代码
+              reject({message: JSON.stringify(err)});
             }
           });
-        } else {
-          resolve(result.hash);
         }
       });
     } catch(e) {

@@ -9,6 +9,7 @@ router.get('/', function(req, res, next) {
   var fs = require('fs');
   var PackageManager = require('../core/services/package-manager');
   var packageManager = new PackageManager();
+  var common = require('../core/utils/common');
   res.render('index', { title: 'CodePushServer' });
 });
 
