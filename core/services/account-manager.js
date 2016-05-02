@@ -15,7 +15,8 @@ var proto = module.exports = function (){
 };
 
 proto.collaboratorCan = function(uid, appName) {
-  return this.getCollaborator(uid, appName).then(function (data) {
+  return this.getCollaborator(uid, appName)
+  .then(function (data) {
     if (!data) {
       throw new Error("Permission Deny!");
     }
@@ -24,7 +25,8 @@ proto.collaboratorCan = function(uid, appName) {
 };
 
 proto.ownerCan = function(uid, appName) {
-  return this.getCollaborator(uid, appName).then(function (data) {
+  return this.getCollaborator(uid, appName)
+  .then(function (data) {
     if (!data || !_.eq(_.get(data,'roles'), 'Owner') ) {
       throw new Error("Permission Deny!");
     }
@@ -37,7 +39,8 @@ proto.getCollaborator = function (uid, appName) {
 };
 
 proto.findUserByEmail = function (email) {
-  return models.Users.findOne({where: {email: email}}).then(function (data) {
+  return models.Users.findOne({where: {email: email}})
+  .then(function (data) {
     if (_.isEmpty(data)) {
       throw new Error(email + " does not exist.");
     } else {
@@ -47,7 +50,8 @@ proto.findUserByEmail = function (email) {
 };
 
 proto.getAllAccessKeyByUid = function (uid) {
-  return models.UserTokens.findAll({where: {uid: uid}}).then(function (token) {
+  return models.UserTokens.findAll({where: {uid: uid}})
+  .then(function (token) {
     return _.map(token, function(v){
       return {
         name: v.tokens,
@@ -69,31 +73,28 @@ proto.createAccessKey = function (uid, newAccessKey,  createdBy, description) {
 };
 
 proto.login = function (account, password) {
-  return Promise(function (resolve, reject, notify) {
-    if (_.isEmpty(account)) {
-      throw new Error("Please input Account.");
-    }
-    if (_.isEmpty(password)) {
-      throw new Error("Please input Password.");
-    }
-    var where = {};
-    if (validator.isEmail(account)) {
-      where = {email: account};
-    }else {
-      where = {username: account};
-    }
-    return models.Users.findOne({where: where}).then(function(users) {
-      if (_.isEmpty(users)) {
+  if (_.isEmpty(account)) {
+    return Promise.reject(new Error("Please input Account."))
+  }
+  if (_.isEmpty(password)) {
+    return Promise.reject(new Error("Please input Password."))
+  }
+  var where = {};
+  if (validator.isEmail(account)) {
+    where = {email: account};
+  }else {
+    where = {username: account};
+  }
+  return models.Users.findOne({where: where})
+  .then(function(users) {
+    if (_.isEmpty(users)) {
+      throw new Error("Account or Password ERROR.");
+    } else {
+      if (!security.passwordVerifySync(password, users.password)) {
         throw new Error("Account or Password ERROR.");
       }else {
-        if (!security.passwordVerify(password, users.password)) {
-          throw new Error("Account or Password ERROR.");
-        }else {
-          resolve(users);
-        }
+        return users;
       }
-    }).catch(function (e) {
-      reject(e);
-    });
+    }
   });
 };

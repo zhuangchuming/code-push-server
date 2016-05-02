@@ -14,11 +14,11 @@ var randToken = require('rand-token').generator({
 var security = {};
 module.exports = security;
 
-security.passwordHash = function(password){
+security.passwordHashSync = function(password){
   return bcrypt.hashSync(password, bcrypt.genSaltSync(12));
 }
 
-security.passwordVerify = function(password, hash){
+security.passwordVerifySync = function(password, hash){
   return bcrypt.compareSync(password, hash)
 }
 

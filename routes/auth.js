@@ -22,7 +22,8 @@ router.post('/login', function(req, res, next) {
   var account = _.trim(req.body.account);
   var createdBy = _.trim(req.query.hostname);
   var password = _.trim(req.body.password);
-  accountManager.login(account, password).then(function (users) {
+  accountManager.login(account, password)
+  .then(function (users) {
     if (_.isEmpty(createdBy)){
       createdBy = users.username;
     }
