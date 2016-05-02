@@ -56,7 +56,7 @@ proto.promote = function (sourceDeploymentId, destDeploymentId, promoteUid) {
       originalDeployment: sourceDeployment.name
     };
     var packageManager = new PackageManager();
-    return packageManager.createPackage(destDeploymentId, deploymentsVersions.app_version, packages.blob_url, packages.package_hash, params);
+    return packageManager.createPackage(destDeploymentId, deploymentsVersions.app_version, packages.package_hash, packages.manifest_blob_url, packages.blob_url, params);
   });
 };
 

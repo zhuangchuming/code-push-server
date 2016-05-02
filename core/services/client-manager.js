@@ -24,7 +24,8 @@ proto.updateCheck = function(deploymentKey, appVersion, label, packageHash) {
       packageHash: "",
       label: "",
       packageSize: 0,
-      updateAppVersion: false
+      updateAppVersion: false,
+      shouldRunBinaryVersion: false
     };
     if (_.isEmpty(deploymentKey) || _.isEmpty(appVersion)) {
       throw Error("please input deploymentKey and appVersion");
@@ -50,9 +51,9 @@ proto.updateCheck = function(deploymentKey, appVersion, label, packageHash) {
             rs.packageHash = _.get(packages, 'package_hash', '');
             rs.label = _.get(packages, 'label', '');
             rs.packageSize = _.get(packages, 'size', 0);
-            rs.updateAppVersion = false;
+            rs.shouldRunBinaryVersion = false;
             if (!_.isEmpty(diffPackage)) {
-              console.log(diffPackage);
+              console.log('diff');
               rs.downloadURL = _.get(config, 'downloadUrl') + '/' + _.get(diffPackage, 'diff_blob_url');
               rs.packageSize = _.get(diffPackage, 'diff_size', 0);
             }

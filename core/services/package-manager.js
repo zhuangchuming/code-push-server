@@ -91,7 +91,7 @@ proto.calcPackageAllFiles = function (directoryPath) {
   });
 };
 
-proto.existPackageHash = function (deploymentId, appVersion, manifestHash) {
+proto.existPackageHash = function (deploymentId, appVersion, packageHash) {
   return this.getDeploymentsVersions(deploymentId, appVersion).then(function (data) {
     if (_.isEmpty(data)){
       return models.DeploymentsVersions.create({
@@ -107,7 +107,7 @@ proto.existPackageHash = function (deploymentId, appVersion, manifestHash) {
         return models.Packages.findOne({
           where: {id: packageId}
         }).then(function (data) {
-          if (_.eq(_.get(data,"package_hash"), manifestHash)){
+          if (_.eq(_.get(data,"package_hash"), packageHash)){
             return true;
           }else {
             return false;
@@ -120,7 +120,7 @@ proto.existPackageHash = function (deploymentId, appVersion, manifestHash) {
   });
 };
 
-proto.createPackage = function (deploymentId, appVersion, packageHash, manifestHash, params) {
+proto.createPackage = function (deploymentId, appVersion, packageHash, manifestHash, blobHash, params) {
   var releaseMethod = params.releaseMethod || 'Upload';
   var releaseUid = params.releaseUid || 0;
   var isMandatory = params.isMandatory ? 1 : 0;
@@ -133,8 +133,8 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
       return models.Packages.create({
         deployment_id: deploymentId,
         description: description,
-        package_hash: manifestHash,
-        blob_url: packageHash,
+        package_hash: packageHash,
+        blob_url: blobHash,
         size: size,
         manifest_blob_url: manifestHash,
         release_method: releaseMethod,
@@ -144,21 +144,25 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
         original_deployment: originalDeployment
       },{transaction: t
       }).then(function (packages) {
-        return models.DeploymentsVersions.update(
-          {is_mandatory: isMandatory, current_package_id: packages.id},
-          {where: {deployment_id: deploymentId, app_version: appVersion}, transaction: t
-        }).spread(function (affectRow) {
-          if (_.lte(affectRow, 0)) {
-            throw Error('deploy error.');
+        return models.DeploymentsVersions.findOne({where: {deployment_id: deploymentId, app_version: appVersion}})
+        .then(function (deploymentsVersions) {
+          if (_.isEmpty(deploymentsVersions)) {
+            return models.DeploymentsVersions.create({
+              is_mandatory: isMandatory,
+              current_package_id: packages.id,
+              deployment_id: deploymentId,
+              app_version: appVersion
+            },
+            {transaction: t})
+          } else {
+            deploymentsVersions.set('is_mandatory', isMandatory);
+            deploymentsVersions.set('current_package_id', packages.id);
+            return deploymentsVersions.save({transaction: t});
           }
-          return models.DeploymentsVersions.findOne({where: {deployment_id: deploymentId, app_version: appVersion}});
         }).then(function (deploymentsVersions) {
-            if (_.isEmpty(deploymentsVersions)){
-              throw new Error('empty versions.');
-            }
-            return models.Deployments.update({
-              last_deployment_version_id: deploymentsVersions.id
-            },{where: {id: deploymentId}, transaction: t});
+          return models.Deployments.update({
+            last_deployment_version_id: deploymentsVersions.id
+          },{where: {id: deploymentId}, transaction: t});
         }).then(function () {
           return packages;
         });
@@ -167,16 +171,15 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
   });
 };
 
-proto.downloadPackageAndExtract = function (packageHash, manifestBlobHash, blobHash) {
-  var directoryPath = path.join(os.tmpdir(), `${blobHash}`);
+proto.downloadPackageAndExtract = function (workDirectoryPath, packageHash, manifestBlobHash, blobHash) {
   var downloadURL1 = _.get(config, 'downloadUrl') + '/' + manifestBlobHash;
   var downloadURL2 = _.get(config, 'downloadUrl') + '/' + blobHash;
-  return common.createEmptyTempFolder(directoryPath).then(function () {
+  return common.createEmptyTempFolder(workDirectoryPath).then(function () {
     return Q.allSettled([
-      common.createFileFromRequest(downloadURL2, `${directoryPath}/${blobHash}`),
-      common.createFileFromRequest(downloadURL1, `${directoryPath}/${manifestBlobHash}`)
+      common.createFileFromRequest(downloadURL2, `${workDirectoryPath}/${blobHash}`),
+      common.createFileFromRequest(downloadURL1, `${workDirectoryPath}/${manifestBlobHash}`)
     ]).spread(function (r, r2) {
-      return common.unzipFile(`${directoryPath}/${blobHash}`, `${directoryPath}/new`);
+      return common.unzipFile(`${workDirectoryPath}/${blobHash}`, `${workDirectoryPath}/new`);
     });
   });
 }
@@ -199,30 +202,30 @@ proto.zipDiffPackage = function (fileName, files, baseDirectoryPath, hotcodepush
   });
 }
 
-proto.generateOneDiffPackage = function (packageId, directoryPath, originManifestBlobHash, manifestBlobHash) {
+proto.generateOneDiffPackage = function (workDirectoryPath, packageId, originManifestBlobHash, diffPackageHash, diffManifestBlobHash) {
   var _this = this;
-  return models.PackagesDiff.findOne({where:{package_id: packageId, diff_against_package_hash:manifestBlobHash}})
+  return models.PackagesDiff.findOne({where:{package_id: packageId, diff_against_package_hash: diffPackageHash}})
   .then(function (diffPackage) {
     if (!_.isEmpty(diffPackage)) {
       return null;
     }
-    var downloadURL = _.get(config, 'downloadUrl') + '/' + manifestBlobHash;
-    return common.createFileFromRequest(downloadURL, `${directoryPath}/${manifestBlobHash}`).then(function(){
+    var downloadURL = _.get(config, 'downloadUrl') + '/' + diffManifestBlobHash;
+    return common.createFileFromRequest(downloadURL, `${workDirectoryPath}/${diffManifestBlobHash}`).then(function(){
       try {
-        var fileContent1 = JSON.parse(fs.readFileSync(`${directoryPath}/${originManifestBlobHash}`, "utf8"))
-        var fileContent2 = JSON.parse(fs.readFileSync(`${directoryPath}/${manifestBlobHash}`, "utf8"))
+        var fileContent1 = JSON.parse(fs.readFileSync(`${workDirectoryPath}/${originManifestBlobHash}`, "utf8"))
+        var fileContent2 = JSON.parse(fs.readFileSync(`${workDirectoryPath}/${diffManifestBlobHash}`, "utf8"))
         var json = common.diffCollections(fileContent1, fileContent2);
         var files =  _.concat(json.diff, json.collection1Only);
         var hotcodepush = {deletedFiles: json.collection2Only};
-        var hotcodepushFile = `${directoryPath}/${manifestBlobHash}_hotcodepush`;
+        var hotcodepushFile = `${workDirectoryPath}/${diffManifestBlobHash}_hotcodepush`;
         fs.writeFileSync(hotcodepushFile, JSON.stringify(hotcodepush));
-        var baseDirectoryPath = `${directoryPath}/new`;
-        var fileName = `${directoryPath}/${manifestBlobHash}.zip`;
+        var baseDirectoryPath = `${workDirectoryPath}/new`;
+        var fileName = `${workDirectoryPath}/${diffManifestBlobHash}.zip`;
         return _this.zipDiffPackage(fileName, files, baseDirectoryPath, hotcodepushFile).then(function (data) {
           return security.qetag(fileName).then(function (diffHash) {
             return common.uploadFileToQiniu(diffHash, fileName).then(function () {
                 var stats = fs.statSync(fileName);
-                return models.PackagesDiff.create({package_id:packageId, diff_against_package_hash:manifestBlobHash, diff_blob_url:diffHash, diff_size:stats.size});
+                return models.PackagesDiff.create({package_id:packageId, diff_against_package_hash:diffPackageHash, diff_blob_url:diffHash, diff_size:stats.size});
             })
           });
         });
@@ -247,11 +250,13 @@ proto.createDiffPackages = function (packageId, num) {
       var package_hash = _.get(data, 'package_hash');
       var manifest_blob_url = _.get(data, 'manifest_blob_url');
       var blob_url = _.get(data, 'blob_url');
-      return _this.downloadPackageAndExtract(package_hash, manifest_blob_url, blob_url).then(function () {
-        var directoryPath = path.join(os.tmpdir(), `${blob_url}`);
-        return Q.allSettled(_.map(lastNumsPackages, function (v) {
-          return _this.generateOneDiffPackage(packageId, directoryPath, manifest_blob_url, v.manifest_blob_url);
-        }));
+      var workDirectoryPath = path.join(os.tmpdir(), security.randToken(32));
+      return _this.downloadPackageAndExtract(workDirectoryPath, package_hash, manifest_blob_url, blob_url).then(function () {
+        return Q.allSettled(
+          _.map(lastNumsPackages, function (v) {
+            return _this.generateOneDiffPackage(workDirectoryPath, packageId, manifest_blob_url, v.package_hash, v.manifest_blob_url);
+          })
+        );
       });
     })
   });
@@ -272,16 +277,17 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
       }
     }).then(function (directoryPath) {
       return _this.calcPackageAllFiles(directoryPath).then(function (data) {
+        var packageHash = security.packageHashSync(data);
         var hashFile = directoryPath + "/../hashFile.json";
         fs.writeFileSync(hashFile, JSON.stringify(data));
         return security.qetag(hashFile).then(function (manifestHash) {
-          return _this.existPackageHash(deploymentId, appVersion, manifestHash).then(function (isExist) {
+          return _this.existPackageHash(deploymentId, appVersion, packageHash).then(function (isExist) {
             if (!isExist){
               return Q.allSettled([
                 common.uploadFileToQiniu(manifestHash, hashFile),
                 common.uploadFileToQiniu(blobHash, filePath)
               ]).spread(function (up1, up2) {
-                return manifestHash;
+                return [packageHash, manifestHash, blobHash];
               });
             } else {
               throw new Error("The uploaded package is identical to the contents of the specified deployment's current release.");
@@ -289,7 +295,7 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
           });
         });
       });
-    }).then(function (manifestHash) {
+    }).spread(function (packageHash, manifestHash, blobHash) {
       var stats = fs.statSync(filePath);
       var params = {
         releaseMethod: 'Upload',
@@ -298,7 +304,7 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
         size: stats.size,
         description: description
       }
-      return _this.createPackage(deploymentId, appVersion, blobHash, manifestHash, params);
+      return _this.createPackage(deploymentId, appVersion, packageHash, manifestHash, blobHash, params);
     });
   });
 };

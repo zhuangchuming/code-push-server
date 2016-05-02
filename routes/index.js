@@ -3,8 +3,12 @@ var router = express.Router();
 var middleware = require('../core/middleware');
 var ClientManager = require('../core/services/client-manager');
 var _ = require('lodash');
+var security = require('../core/utils/security');
 
 router.get('/', function(req, res, next) {
+  var fs = require('fs');
+  var PackageManager = require('../core/services/package-manager');
+  var packageManager = new PackageManager();
   res.render('index', { title: 'CodePushServer' });
 });
 
