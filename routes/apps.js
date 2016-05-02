@@ -110,7 +110,9 @@ router.post('/:appName/deployments/:deploymentName/release',
         return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid);
       }).then(function (packages) {
         if (!_.isEmpty(packages)) {
-          packageManager.createDiffPackages(packages.id, DIFF_NUMS);
+          setTimeout(function () {
+            packageManager.createDiffPackages(packages.id, DIFF_NUMS);
+          }, 5000)
         }
         return null;
       });
@@ -148,7 +150,9 @@ router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeployment
     });
   }).then(function (packages) {
     if (!_.isEmpty(packages)) {
-      packageManager.createDiffPackages(packages.id, DIFF_NUMS);
+      setTimeout(function () {
+        packageManager.createDiffPackages(packages.id, DIFF_NUMS);
+      }, 5000)
     }
     return null;
   }).then(function () {
