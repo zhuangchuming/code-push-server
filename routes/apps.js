@@ -9,6 +9,7 @@ var Deployments = require('../core/services/deployments');
 var Collaborators = require('../core/services/collaborators');
 var AppManager = require('../core/services/app-manager');
 var PackageManager = require('../core/services/package-manager');
+var common = require('../core/utils/common');
 var config    = _.get(require('../core/config'), 'common', {});
 
 router.get('/',
@@ -111,13 +112,16 @@ router.post('/:appName/deployments/:deploymentName/release',
       }
       return packageManager.parseReqFile(req)
       .then(function (data) {
-        return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid);
+        return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid)
+        .finally(function (d) {
+          common.deleteFolderSync(data.package.path);
+        });
       })
       .then(function (packages) {
         if (!_.isEmpty(packages)) {
           setTimeout(function () {
             packageManager.createDiffPackages(packages.id, _.get(config, 'diffNums', 1));
-          }, 5000)
+          }, 2000)
         }
         return null;
       });
@@ -157,7 +161,7 @@ router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeployment
     if (!_.isEmpty(packages)) {
       setTimeout(function () {
         packageManager.createDiffPackages(packages.id, _.get(config, 'diffNums', 1));
-      }, 5000)
+      }, 2000)
     }
     return null;
   }).then(function () {

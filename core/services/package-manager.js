@@ -241,6 +241,9 @@ proto.createDiffPackages = function (packageId, num) {
             return self.generateOneDiffPackage(workDirectoryPath, packageId, dataCenter, v.package_hash, v.manifest_blob_url);
           })
         );
+      })
+      .finally(function () {
+        common.deleteFolderSync(workDirectoryPath);
       });
     })
   });
@@ -261,7 +264,8 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
       } else {
         throw new Error("file type error!");
       }
-    }).then(function (directoryPath) {
+    })
+    .then(function (directoryPath) {
       var dataCenterManager = require('./datacenter-manager')();
       return dataCenterManager.storePackage(directoryPath)
       .then(function (dataCenter) {
@@ -295,6 +299,8 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
         description: description
       }
       return self.createPackage(deploymentId, appVersion, packageHash, manifestHash, blobHash, params);
+    }).finally(function () {
+      common.deleteFolderSync(directoryPath);
     });
   });
 };
