@@ -34,13 +34,34 @@ proto.hasPackageStoreSync = function (packageHash) {
   return fs.existsSync(manifestFile) && fs.existsSync(contentPath);
 }
 
+proto.getPackageInfo = function (packageHash) {
+  if (this.hasPackageStoreSync(packageHash)){
+    var dataDir = this.getDataDir();
+    var packageHashPath = `${dataDir}/${packageHash}`;
+    var manifestFile = `${packageHashPath}/${MANIFEST_FILE_NAME}`;
+    var contentPath = `${packageHashPath}/${CONTENTS_NAME}`;
+    return this.buildPackageInfo(packageHash, packageHashPath, contentPath, manifestFile);
+  } else {
+    throw new Error('can\'t get PackageInfo');
+  }
+}
+
+proto.buildPackageInfo = function (packageHash, packageHashPath, contentPath, manifestFile) {
+  return {
+    packageHash: packageHash,
+    path: packageHashPath,
+    contentPath: contentPath,
+    manifestFilePath:manifestFile
+  }
+}
+
 proto.validateStore = function (providePackageHash) {
   var dataDir = this.getDataDir();
   var packageHashPath = `${dataDir}/${providePackageHash}`;
   var manifestFile = `${packageHashPath}/${MANIFEST_FILE_NAME}`;
   var contentPath = `${packageHashPath}/${CONTENTS_NAME}`;
   if (!this.hasPackageStoreSync(providePackageHash)) {
-    return Promise.reject(new Error('not exists'));
+    return Promise.resolve(false);
   }
   return security.calcAllFileSha256(contentPath)
   .then(function (manifestJson) {
@@ -58,7 +79,10 @@ proto.validateStore = function (providePackageHash) {
   });
 }
 
-proto.storePackage = function (sourceDst) {
+proto.storePackage = function (sourceDst, force) {
+  if (_.isEmpty(force)){
+    force = false;
+  }
   var self = this;
   return security.calcAllFileSha256(sourceDst)
   .then(function (manifestJson) {
@@ -67,14 +91,15 @@ proto.storePackage = function (sourceDst) {
     var packageHashPath = `${dataDir}/${packageHash}`;
     var manifestFile = `${packageHashPath}/${MANIFEST_FILE_NAME}`;
     var contentPath = `${packageHashPath}/${CONTENTS_NAME}`;
-    if (self.hasPackageStoreSync(packageHash)) {
-      return [packageHash, manifestFile, contentPath];
+    if (!force && self.hasPackageStoreSync(packageHash)) {
+      return self.buildPackageInfo(packageHash, packageHashPath, contentPath, manifestFile);
     } else {
       common.createEmptyFolderSync(packageHashPath);
-      return common.move(sourceDst, contentPath).then(function () {
+      return common.move(sourceDst, contentPath)
+      .then(function () {
         var manifestString = JSON.stringify(manifestJson);
         fs.writeFileSync(manifestFile, manifestString);
-        return [packageHash, manifestFile, contentPath];
+        return self.buildPackageInfo(packageHash, packageHashPath, contentPath, manifestFile);
       });
     }
   });

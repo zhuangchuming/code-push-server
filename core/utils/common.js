@@ -18,15 +18,18 @@ common.createFileFromRequest = function (url, filePath) {
         request(url).on('error', function (error) {
           reject(error);
         }).on('response', function (response) {
-            if (response.statusCode == 200) {
-              let stream = fs.createWriteStream(filePath);
-              response.pipe(stream);
-              stream.on('close',function(){
-                resolve(null);
-              });
-            } else {
-              reject({message:'request fail'})
-            }
+          if (response.statusCode == 200) {
+            let stream = fs.createWriteStream(filePath);
+            response.pipe(stream);
+            stream.on('close',function(){
+              resolve(null);
+            });
+            stream.on('error', function (error) {
+              reject(error)
+            })
+          } else {
+            reject({message:'request fail'})
+          }
         });
       }else {
         resolve(null);
@@ -136,7 +139,7 @@ common.uploadFileToQiniu = function (key, filePath) {
   });
 };
 
-common.diffCollections = function (collection1, collection2) {
+common.diffCollectionsSync = function (collection1, collection2) {
   var diffFiles = [];
   var collection1Only = [];
   var newCollection2 = Object.assign({}, collection2);

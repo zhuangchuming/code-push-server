@@ -125,90 +125,120 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
   });
 };
 
-proto.downloadPackageAndExtract = function (workDirectoryPath, packageHash, manifestBlobHash, blobHash) {
-  var downloadURL1 = _.get(config, 'downloadUrl') + '/' + manifestBlobHash;
-  var downloadURL2 = _.get(config, 'downloadUrl') + '/' + blobHash;
-  return common.createEmptyFolder(workDirectoryPath).then(function () {
-    return Q.allSettled([
-      common.createFileFromRequest(downloadURL2, `${workDirectoryPath}/${blobHash}`),
-      common.createFileFromRequest(downloadURL1, `${workDirectoryPath}/${manifestBlobHash}`)
-    ]).spread(function (r, r2) {
-      return common.unzipFile(`${workDirectoryPath}/${blobHash}`, `${workDirectoryPath}/new`);
-    });
+proto.downloadPackageAndExtract = function (workDirectoryPath, packageHash, blobHash) {
+  var dataCenterManager = require('./datacenter-manager')();
+  return dataCenterManager.validateStore(packageHash)
+  .then(function (isValidate) {
+    if (isValidate) {
+      return dataCenterManager.getPackageInfo(packageHash);
+    } else {
+      var downloadURL = _.get(config, 'downloadUrl') + '/' + blobHash;
+      return common.createFileFromRequest(downloadURL, `${workDirectoryPath}/${blobHash}`)
+      .then(function (download) {
+        return common.unzipFile(`${workDirectoryPath}/${blobHash}`, `${workDirectoryPath}/current`)
+        .then(function (outputPath) {
+          return dataCenterManager.storePackage(outputPath, true);
+        });
+      });
+    }
   });
 }
 
-proto.zipDiffPackage = function (fileName, files, baseDirectoryPath, hotcodepushFile) {
+proto.zipDiffPackage = function (fileName, files, baseDirectoryPath, hotCodePushFile) {
   return Promise(function (resolve, reject, notify) {
     var zipFile = new yazl.ZipFile();
     var writeStream = fs.createWriteStream(fileName);
-    zipFile.outputStream.pipe(writeStream).on("error", function (error) {
+    writeStream.on('error', function (error) {
       reject(error);
-    }).on("close", function () {
+    })
+    zipFile.outputStream.pipe(writeStream)
+    .on("error", function (error) {
+      reject(error);
+    })
+    .on("close", function () {
       resolve({ isTemporary: true, path: fileName });
     });
     for (var i = 0; i < files.length; ++i) {
         var file = files[i];
         zipFile.addFile(`${baseDirectoryPath}/${file}`, slash(file));
     }
-    zipFile.addFile(hotcodepushFile, 'hotcodepush.json');
+    zipFile.addFile(hotCodePushFile, 'hotcodepush.json');
     zipFile.end();
   });
 }
 
-proto.generateOneDiffPackage = function (workDirectoryPath, packageId, originManifestBlobHash, diffPackageHash, diffManifestBlobHash) {
-  var _this = this;
-  return models.PackagesDiff.findOne({where:{package_id: packageId, diff_against_package_hash: diffPackageHash}})
+proto.generateOneDiffPackage = function (workDirectoryPath, packageId, dataCenter, diffPackageHash, diffManifestBlobHash) {
+  var self = this;
+  return models.PackagesDiff.findOne({
+    where:{
+      package_id: packageId,
+      diff_against_package_hash: diffPackageHash
+    }
+  })
   .then(function (diffPackage) {
     if (!_.isEmpty(diffPackage)) {
-      return null;
+      return;
     }
     var downloadURL = _.get(config, 'downloadUrl') + '/' + diffManifestBlobHash;
-    return common.createFileFromRequest(downloadURL, `${workDirectoryPath}/${diffManifestBlobHash}`).then(function(){
-      try {
-        var fileContent1 = JSON.parse(fs.readFileSync(`${workDirectoryPath}/${originManifestBlobHash}`, "utf8"))
-        var fileContent2 = JSON.parse(fs.readFileSync(`${workDirectoryPath}/${diffManifestBlobHash}`, "utf8"))
-        var json = common.diffCollections(fileContent1, fileContent2);
-        var files =  _.concat(json.diff, json.collection1Only);
-        var hotcodepush = {deletedFiles: json.collection2Only};
-        var hotcodepushFile = `${workDirectoryPath}/${diffManifestBlobHash}_hotcodepush`;
-        fs.writeFileSync(hotcodepushFile, JSON.stringify(hotcodepush));
-        var baseDirectoryPath = `${workDirectoryPath}/new`;
-        var fileName = `${workDirectoryPath}/${diffManifestBlobHash}.zip`;
-        return _this.zipDiffPackage(fileName, files, baseDirectoryPath, hotcodepushFile).then(function (data) {
-          return security.qetag(fileName).then(function (diffHash) {
-            return common.uploadFileToQiniu(diffHash, fileName).then(function () {
-                var stats = fs.statSync(fileName);
-                return models.PackagesDiff.create({package_id:packageId, diff_against_package_hash:diffPackageHash, diff_blob_url:diffHash, diff_size:stats.size});
-            })
-          });
-        });
-      }catch (e) {
+    return common.createFileFromRequest(downloadURL, `${workDirectoryPath}/${diffManifestBlobHash}`)
+    .then(function(){
+      var originContentPath = dataCenter.contentPath;
+      var originManifestJson = JSON.parse(fs.readFileSync(dataCenter.manifestFilePath, "utf8"))
+      var diffManifestJson = JSON.parse(fs.readFileSync(`${workDirectoryPath}/${diffManifestBlobHash}`, "utf8"))
+      var json = common.diffCollectionsSync(originManifestJson, diffManifestJson);
+      var files = _.concat(json.diff, json.collection1Only);
+      var hotcodepush = {deletedFiles: json.collection2Only};
+      var hotCodePushFile = `${workDirectoryPath}/${diffManifestBlobHash}_hotcodepush`;
+      fs.writeFileSync(hotCodePushFile, JSON.stringify(hotcodepush));
+      var fileName = `${workDirectoryPath}/${diffManifestBlobHash}.zip`;
 
-      }
-      return null;
+      return self.zipDiffPackage(fileName, files, originContentPath, hotCodePushFile)
+      .then(function (data) {
+        return security.qetag(data.path)
+        .then(function (diffHash) {
+          return common.uploadFileToQiniu(diffHash, fileName)
+          .then(function () {
+              var stats = fs.statSync(fileName);
+              return models.PackagesDiff.create({
+                package_id: packageId,
+                diff_against_package_hash: diffPackageHash,
+                diff_blob_url: diffHash,
+                diff_size: stats.size
+              });
+          })
+        });
+      });
     });
   });
 }
 
 proto.createDiffPackages = function (packageId, num) {
-  var _this = this;
+  var self = this;
   return models.Packages.findById(packageId).then(function (data) {
     if (_.isEmpty(data)) {
       throw Error('can\'t find Package');
     }
-    return models.Packages.findAll({where:{deployment_id: data.deployment_id, id: {$lt: packageId}}, order:[['id','desc']], limit:num }).then(function (lastNumsPackages) {
+    return models.Packages.findAll({
+      where:{
+        deployment_id: data.deployment_id,
+        id: {$lt: packageId}},
+        order:[['id','desc']],
+        limit:num
+      })
+    .then(function (lastNumsPackages) {
       if (_.isEmpty(lastNumsPackages)) {
         return null;
       }
       var package_hash = _.get(data, 'package_hash');
       var manifest_blob_url = _.get(data, 'manifest_blob_url');
       var blob_url = _.get(data, 'blob_url');
-      var workDirectoryPath = path.join(os.tmpdir(), security.randToken(32));
-      return _this.downloadPackageAndExtract(workDirectoryPath, package_hash, manifest_blob_url, blob_url).then(function () {
+      var workDirectoryPath = path.join(os.tmpdir(), 'codepush_' + security.randToken(32));
+      common.createEmptyFolderSync(workDirectoryPath);
+      return self.downloadPackageAndExtract(workDirectoryPath, package_hash, blob_url)
+      .then(function (dataCenter) {
         return Q.allSettled(
           _.map(lastNumsPackages, function (v) {
-            return _this.generateOneDiffPackage(workDirectoryPath, packageId, manifest_blob_url, v.package_hash, v.manifest_blob_url);
+            return self.generateOneDiffPackage(workDirectoryPath, packageId, dataCenter, v.package_hash, v.manifest_blob_url);
           })
         );
       });
@@ -221,8 +251,9 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
   var appVersion = packageInfo.appVersion;
   var description = packageInfo.description;
   var isMandatory = packageInfo.isMandatory;
-  return security.qetag(filePath).then(function (blobHash) {
-    var directoryPath = path.join(os.tmpdir(), `${blobHash}`);
+  return security.qetag(filePath)
+  .then(function (blobHash) {
+    var directoryPath = path.join(os.tmpdir(), 'codepush_' + security.randToken(32));
     return common.createEmptyFolder(directoryPath)
     .then(function () {
       if (fileType == "application/zip") {
@@ -233,7 +264,9 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
     }).then(function (directoryPath) {
       var dataCenterManager = require('./datacenter-manager')();
       return dataCenterManager.storePackage(directoryPath)
-      .spread(function (packageHash, manifestFile) {
+      .then(function (dataCenter) {
+        var packageHash = dataCenter.packageHash;
+        var manifestFile = dataCenter.manifestFilePath;
         return self.existPackageHash(deploymentId, appVersion, packageHash)
         .then(function (isExist) {
           if (isExist){
