@@ -1,9 +1,8 @@
 'use strict';
 var Q = require('q');
 var Promise = Q.Promise;
-var rimraf = require('rimraf');
-var mkdirp = require('mkdirp');
 var fs = require("fs");
+var fsextra = require("fs.extra");
 var unzip = require('node-unzip-2');
 var qiniu = require("qiniu");
 var _ = require('lodash');
@@ -36,9 +35,20 @@ common.createFileFromRequest = function (url, filePath) {
   });
 }
 
+common.move = function (sourceDst, targertDst) {
+  return Promise(function (resolve, reject, notify) {
+    fsextra.move(sourceDst, targertDst, function (err) {
+      if (err) {
+        return reject(err);
+      }
+      resolve();
+    });
+  });
+};
+
 common.deleteFolder = function (folderPath) {
   return Promise(function (resolve, reject, notify) {
-    rimraf(folderPath, function (err) {
+    fsextra.rmrf(folderPath, function (err) {
       if (err) {
         reject(err);
       }else {
@@ -48,10 +58,14 @@ common.deleteFolder = function (folderPath) {
   });
 };
 
-common.createEmptyTempFolder = function (folderPath) {
+common.deleteFolderSync = function (folderPath) {
+  return fsextra.rmrfSync(folderPath);
+};
+
+common.createEmptyFolder = function (folderPath) {
   return Promise(function (resolve, reject, notify) {
     common.deleteFolder(folderPath).then(function (data) {
-      mkdirp(folderPath, function (err) {
+      fsextra.mkdirp(folderPath, function (err) {
         if (err) {
           reject({message: "create error"});
         } else {
@@ -60,6 +74,11 @@ common.createEmptyTempFolder = function (folderPath) {
       });
     });
   });
+};
+
+common.createEmptyFolderSync = function (folderPath) {
+  common.deleteFolderSync(folderPath);
+  return fsextra.mkdirp(folderPath);
 };
 
 common.unzipFile = function (zipFile, outputPath) {

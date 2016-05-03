@@ -41,9 +41,9 @@ security.fileSha256 = function (file) {
   });
 }
 
-security.stringSha256Sync = function (string) {
+security.stringSha256Sync = function (contents) {
   var sha256 = crypto.createHash('sha256');
-  sha256.update(string);
+  sha256.update(contents);
   return sha256.digest('hex');
 }
 
@@ -56,8 +56,67 @@ security.packageHashSync = function (jsonData) {
   return security.stringSha256Sync(manifestString);
 }
 
-security.qetag = function (filePath) {
+//参数为buffer或者readableStream或者文件路径
+security.qetag = function (buffer) {
   return Promise(function (resolve, reject, notify) {
-    qetag(filePath, resolve);
+    qetag(buffer, resolve);
+  });
+}
+
+security.qetagString = function (contents) {
+  return Promise(function (resolve, reject, notify) {
+    var Readable = require('stream').Readable
+    var buffer = new Readable
+    buffer.push(contents)
+    buffer.push(null)
+    qetag(buffer, resolve);
+  });
+}
+
+security.sha256AllFiles = function (files) {
+  return Promise(function (resolve, reject, notify) {
+    var results = {};
+    var length = files.length;
+    var count = 0;
+    files.forEach(function (file) {
+      security.fileSha256(file)
+      .then(function (hash) {
+        results[file] = hash;
+        count++;
+        if (count == length) {
+          resolve(results);
+        }
+      });
+    });
+  });
+}
+
+security.calcAllFileSha256 = function (directoryPath) {
+  return Promise(function (resolve, reject, notify) {
+    var recursiveFs = require("recursive-fs");
+    var sortObj = require('sort-object');
+    var path = require('path');
+    var slash = require("slash");
+    recursiveFs.readdirr(directoryPath, function (error, directories, files) {
+      if (error) {
+        reject(error);
+      } else {
+        if (files.length == 0) {
+          reject({message: "empty files"});
+        }else {
+          security.sha256AllFiles(files)
+          .then(function (results) {
+            var data = {};
+            _.forIn(results, function (value, key) {
+              var relativePath = path.relative(directoryPath, key);
+              relativePath = slash(relativePath);
+              data[relativePath] = value;
+            });
+            data = sortObj(data);
+            resolve(data);
+          });
+        }
+      }
+    });
   });
 }

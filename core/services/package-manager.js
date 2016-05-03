@@ -2,19 +2,16 @@
 var Q = require('q');
 var Promise = Q.Promise;
 var models = require('../../models');
-var security = require('../../core/utils/security');
+var security = require('../utils/security');
 var _ = require('lodash');
 var qetag = require('../utils/qetag');
 var formidable = require('formidable');
-var recursiveFs = require("recursive-fs");
 var yazl = require("yazl");
 var fs = require("fs");
 var slash = require("slash");
 var common = require('../utils/common');
 var os = require('os');
 var path = require('path');
-var mkdirp = require("mkdirp");
-var sortObj = require('sort-object');
 var config    = _.get(require('../config'), 'qiniu', {});
 
 var proto = module.exports = function (){
@@ -42,52 +39,9 @@ proto.parseReqFile = function (req) {
   });
 };
 
-proto.hashAllFiles = function (files) {
-  return Promise(function (resolve, reject, notify) {
-    var results = {};
-    var length = files.length;
-    var count = 0;
-    files.forEach(function (file) {
-      security.fileSha256(file).then(function (hash) {
-        results[file] = hash;
-        count++;
-        if (count == length) {
-          resolve(results);
-        }
-      });
-    });
-  });
-};
-
 proto.getDeploymentsVersions = function (deploymentId, appVersion) {
   return models.DeploymentsVersions.findOne({
     where: {deployment_id: deploymentId, app_version: appVersion}
-  });
-};
-
-proto.calcPackageAllFiles = function (directoryPath) {
-  var _this = this;
-  return Promise(function (resolve, reject, notify) {
-    recursiveFs.readdirr(directoryPath, function (error, directories, files) {
-      if (error) {
-        reject(error);
-      } else {
-        if (files.length == 0) {
-          reject({message: "empty files"});
-        }else {
-          _this.hashAllFiles(files).then(function (results) {
-            var data = {};
-            _.forIn(results, function (value, key) {
-              var relativePath = path.relative(directoryPath, key);
-              relativePath = slash(relativePath);
-              data[relativePath] = value;
-            });
-            data = sortObj(data);
-            resolve(data);
-          });
-        }
-      }
-    });
   });
 };
 
@@ -174,7 +128,7 @@ proto.createPackage = function (deploymentId, appVersion, packageHash, manifestH
 proto.downloadPackageAndExtract = function (workDirectoryPath, packageHash, manifestBlobHash, blobHash) {
   var downloadURL1 = _.get(config, 'downloadUrl') + '/' + manifestBlobHash;
   var downloadURL2 = _.get(config, 'downloadUrl') + '/' + blobHash;
-  return common.createEmptyTempFolder(workDirectoryPath).then(function () {
+  return common.createEmptyFolder(workDirectoryPath).then(function () {
     return Q.allSettled([
       common.createFileFromRequest(downloadURL2, `${workDirectoryPath}/${blobHash}`),
       common.createFileFromRequest(downloadURL1, `${workDirectoryPath}/${manifestBlobHash}`)
@@ -263,13 +217,13 @@ proto.createDiffPackages = function (packageId, num) {
 }
 
 proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, releaseUid) {
-  var _this = this;
+  var self = this;
   var appVersion = packageInfo.appVersion;
   var description = packageInfo.description;
   var isMandatory = packageInfo.isMandatory;
   return security.qetag(filePath).then(function (blobHash) {
-    var directoryPath = path.join(os.tmpdir(), `${blobHash}/new`);
-    return common.createEmptyTempFolder(directoryPath)
+    var directoryPath = path.join(os.tmpdir(), `${blobHash}`);
+    return common.createEmptyFolder(directoryPath)
     .then(function () {
       if (fileType == "application/zip") {
         return common.unzipFile(filePath, directoryPath)
@@ -277,24 +231,26 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
         throw new Error("file type error!");
       }
     }).then(function (directoryPath) {
-      return _this.calcPackageAllFiles(directoryPath).then(function (data) {
-        var packageHash = security.packageHashSync(data);
-        var hashFile = directoryPath + "/../hashFile.json";
-        fs.writeFileSync(hashFile, JSON.stringify(data));
-        return security.qetag(hashFile).then(function (manifestHash) {
-          return _this.existPackageHash(deploymentId, appVersion, packageHash).then(function (isExist) {
-            if (!isExist){
-              return Q.allSettled([
-                common.uploadFileToQiniu(manifestHash, hashFile),
-                common.uploadFileToQiniu(blobHash, filePath)
-              ]).spread(function (up1, up2) {
-                return [packageHash, manifestHash, blobHash];
-              });
-            } else {
-              throw new Error("The uploaded package is identical to the contents of the specified deployment's current release.");
-            }
+      var dataCenterManager = require('./datacenter-manager')();
+      return dataCenterManager.storePackage(directoryPath)
+      .spread(function (packageHash, manifestFile) {
+        return self.existPackageHash(deploymentId, appVersion, packageHash)
+        .then(function (isExist) {
+          if (isExist){
+            throw new Error("The uploaded package is identical to the contents of the specified deployment's current release.");
+          }
+        })
+        .then(function () {
+          return security.qetag(manifestFile).then(function (manifestHash) {
+            return Q.allSettled([
+              common.uploadFileToQiniu(manifestHash, manifestFile),
+              common.uploadFileToQiniu(blobHash, filePath)
+            ]).spread(function (up1, up2) {
+              return [packageHash, manifestHash, blobHash];
+            });
           });
         });
+
       });
     }).spread(function (packageHash, manifestHash, blobHash) {
       var stats = fs.statSync(filePath);
@@ -305,7 +261,7 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
         size: stats.size,
         description: description
       }
-      return _this.createPackage(deploymentId, appVersion, packageHash, manifestHash, blobHash, params);
+      return self.createPackage(deploymentId, appVersion, packageHash, manifestHash, blobHash, params);
     });
   });
 };
