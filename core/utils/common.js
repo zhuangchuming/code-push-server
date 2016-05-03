@@ -86,6 +86,7 @@ common.uptoken = function (bucket, key) {
   var putPolicy = new qiniu.rs.PutPolicy(bucket+":"+key);
   return putPolicy.token();
 }
+
 common.uploadFileToQiniu = function (key, filePath) {
   return Promise(function (resolve, reject, notify) {
     try {

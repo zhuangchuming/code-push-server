@@ -163,15 +163,16 @@ proto.findPackagesAndUserInfos = function (packageIds) {
 
 proto.findDeloymentsPackages = function (ids) {
   var _this = this;
-  return models.DeploymentsVersions.findAll({
-    where: {id: {in: ids}}
-  }).then(function(deploymentsVersionsInfo) {
+  return models.DeploymentsVersions.findAll({where: {id: {in: ids}}})
+  .then(function(deploymentsVersionsInfo) {
     var currentPackageIds =  _.reduce(deploymentsVersionsInfo, function(result, value, key) {
       if (_.gt(value.current_package_id, 0)){
         result.push(value.current_package_id);
       }
+
       return result;
     }, []);
+
     return _this.findPackagesAndUserInfos(currentPackageIds).then(function (data) {
       return _.reduce(deploymentsVersionsInfo, function(result, value, key) {
         if (_.gt(value.id, 0)){
@@ -180,6 +181,7 @@ proto.findDeloymentsPackages = function (ids) {
           _.set(result, value.id + ".packageDiffInfo", _.get(data, value.current_package_id + ".packageDiffInfo"));
           _.set(result, value.id + ".userInfo", _.get(data, value.current_package_id + ".userInfo"));
         }
+
         return result;
       }, {});
     });
@@ -188,50 +190,54 @@ proto.findDeloymentsPackages = function (ids) {
 
 proto.listDeloyments = function (appId) {
   var _this = this;
-  return models.Deployments.findAll({
-    where: {appid: appId}
-  }).then(function(deploymentsInfos){
+  return models.Deployments.findAll({where: {appid: appId}})
+  .then(function(deploymentsInfos){
     if (_.isEmpty(deploymentsInfos)) {
       return [];
-    } else {
-      var deployVersionIds =  _.reduce(deploymentsInfos, function(result, value, key) {
-        if (_.gt(value.last_deployment_version_id, 0)){
-          result.push(value.last_deployment_version_id);
-        }
-        return result;
-      }, []);
-      return _this.findDeloymentsPackages(deployVersionIds).then(function (data1) {
-        var deployments = _.map(deploymentsInfos, function(v2) {
-          var packageInfo = null;
-          var rs = {
-            name: v2.name,
-            key: v2.deployment_key,
-            package: null
-          };
-          if (_.has(data1, v2.last_deployment_version_id)) {;
-            var packageVersion = _.get(data1, v2.last_deployment_version_id);
-            packageInfo = {
-              label: _.get(packageVersion, "packageInfo.label"),
-              description: _.get(packageVersion, "packageInfo.description"),
-              appVersion: _.get(packageVersion, "deploymentsVersions.app_version"),
-              isMandatory: _.get(packageVersion, "deploymentsVersions.is_mandatory") == 2 ? true : false,
-              packageHash: _.get(packageVersion, "packageInfo.package_hash"),
-              blobUrl: _.get(packageVersion, "packageInfo.blob_url"),
-              size: _.get(packageVersion, "packageInfo.size"),
-              manifestBlobUrl: _.get(packageVersion, "packageInfo.manifest_blob_url"),
-              diffAgainstPackageHash: _.get(packageVersion, "packageDiffInfo.diff_against_package_hash"),
-              diffBlobUrl: _.get(packageVersion, "packageDiffInfo.diff_blob_url"),
-              diffSize: _.get(packageVersion, "packageDiffInfo.diff_size"),
-              releaseMethod: _.get(packageVersion, "packageInfo.release_method"),
-              uploadTime: _.get(packageVersion, "packageInfo.updated_at"),
-              releasedBy: _.get(packageVersion, "userInfo.email"),
-            };
-          }
-          rs.package = packageInfo;
-          return rs;
-        });
-        return deployments;
-      });
     }
+
+    var deployVersionIds =  _.reduce(deploymentsInfos, function(result, value, key) {
+      if (_.gt(value.last_deployment_version_id, 0)){
+        result.push(value.last_deployment_version_id);
+      }
+      return result;
+    }, []);
+
+    return _this.findDeloymentsPackages(deployVersionIds)
+    .then(function (data1) {
+      var deployments = _.map(deploymentsInfos, function(v2) {
+        var packageInfo = null;
+        var rs = {
+          name: v2.name,
+          key: v2.deployment_key,
+          package: null
+        };
+        if (_.has(data1, v2.last_deployment_version_id)) {;
+          var packageVersion = _.get(data1, v2.last_deployment_version_id);
+          packageInfo = {
+            label: _.get(packageVersion, "packageInfo.label"),
+            description: _.get(packageVersion, "packageInfo.description"),
+            appVersion: _.get(packageVersion, "deploymentsVersions.app_version"),
+            isMandatory: _.get(packageVersion, "deploymentsVersions.is_mandatory") == 2 ? true : false,
+            packageHash: _.get(packageVersion, "packageInfo.package_hash"),
+            blobUrl: _.get(packageVersion, "packageInfo.blob_url"),
+            size: _.get(packageVersion, "packageInfo.size"),
+            manifestBlobUrl: _.get(packageVersion, "packageInfo.manifest_blob_url"),
+            diffAgainstPackageHash: _.get(packageVersion, "packageDiffInfo.diff_against_package_hash"),
+            diffBlobUrl: _.get(packageVersion, "packageDiffInfo.diff_blob_url"),
+            diffSize: _.get(packageVersion, "packageDiffInfo.diff_size"),
+            releaseMethod: _.get(packageVersion, "packageInfo.release_method"),
+            uploadTime: _.get(packageVersion, "packageInfo.updated_at"),
+            releasedBy: _.get(packageVersion, "userInfo.email"),
+          };
+        }
+        rs.package = packageInfo;
+
+        return rs;
+      });
+
+      return deployments;
+    });
+
   });
 };

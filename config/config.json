@@ -12,6 +12,10 @@
       "secretKey": "",
       "bucketName": "",
       "downloadUrl": ""
+    },
+    "common": {
+      "diffNums": 3,
+      "dataDir": ""
     }
   },
   "test": {
@@ -27,6 +31,10 @@
       "secretKey": "",
       "bucketName": "",
       "downloadUrl": ""
+    },
+    "common": {
+      "diffNums": 3,
+      "dataDir": ""
     }
   },
   "production": {
@@ -42,6 +50,10 @@
       "secretKey": "",
       "bucketName": "",
       "downloadUrl": ""
+    },
+    "common": {
+      "diffNums": 3,
+      "dataDir": ""
     }
   }
 }

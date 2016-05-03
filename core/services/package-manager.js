@@ -269,7 +269,8 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
   var isMandatory = packageInfo.isMandatory;
   return security.qetag(filePath).then(function (blobHash) {
     var directoryPath = path.join(os.tmpdir(), `${blobHash}/new`);
-    return common.createEmptyTempFolder(directoryPath).then(function () {
+    return common.createEmptyTempFolder(directoryPath)
+    .then(function () {
       if (fileType == "application/zip") {
         return common.unzipFile(filePath, directoryPath)
       } else {

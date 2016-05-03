@@ -9,14 +9,14 @@ var Deployments = require('../core/services/deployments');
 var Collaborators = require('../core/services/collaborators');
 var AppManager = require('../core/services/app-manager');
 var PackageManager = require('../core/services/package-manager');
-var os = require('os');
-const DIFF_NUMS = 3;
+var config    = _.get(require('../core/config'), 'common', {});
 
 router.get('/',
   middleware.checkToken, function(req, res, next) {
   var uid = req.users.id;
   var appManager = new AppManager();
-  appManager.listApps(uid).then(function (data) {
+  appManager.listApps(uid)
+  .then(function (data) {
     res.send({apps: data});
   }).catch(function (e) {
     res.status(406).send(e.message);
@@ -28,7 +28,8 @@ router.get('/:appName/deployments',
   var uid = req.users.id;
   var appName = _.trim(req.params.appName);
   var deployments = new Deployments();
-  accountManager.collaboratorCan(uid, appName).then(function (col) {
+  accountManager.collaboratorCan(uid, appName)
+  .then(function (col) {
     return deployments.listDeloyments(col.appid);
   }).then(function (data) {
     res.send({deployments: data});
@@ -101,17 +102,21 @@ router.post('/:appName/deployments/:deploymentName/release',
   var uid = req.users.id;
   var deployments = new Deployments();
   var packageManager = new PackageManager();
-  accountManager.collaboratorCan(uid, appName).then(function (col) {
-    return deployments.findDeloymentByName(deploymentName, col.appid).then(function (deploymentInfo) {
+  accountManager.collaboratorCan(uid, appName)
+  .then(function (col) {
+    return deployments.findDeloymentByName(deploymentName, col.appid)
+    .then(function (deploymentInfo) {
       if (_.isEmpty(deploymentInfo)) {
         throw new Error("does not find the deployment");
       }
-      return packageManager.parseReqFile(req).then(function (data) {
+      return packageManager.parseReqFile(req)
+      .then(function (data) {
         return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid);
-      }).then(function (packages) {
+      })
+      .then(function (packages) {
         if (!_.isEmpty(packages)) {
           setTimeout(function () {
-            packageManager.createDiffPackages(packages.id, DIFF_NUMS);
+            packageManager.createDiffPackages(packages.id, _.get(config, 'diffNums', 1));
           }, 5000)
         }
         return null;
@@ -151,7 +156,7 @@ router.post('/:appName/deployments/:sourceDeploymentName/promote/:destDeployment
   }).then(function (packages) {
     if (!_.isEmpty(packages)) {
       setTimeout(function () {
-        packageManager.createDiffPackages(packages.id, DIFF_NUMS);
+        packageManager.createDiffPackages(packages.id, _.get(config, 'diffNums', 1));
       }, 5000)
     }
     return null;
@@ -262,13 +267,14 @@ router.patch('/:appName',
     return res.status(406).send("Please input name!");
   } else {
     var appManager = new AppManager();
-    return accountManager.ownerCan(uid, appName).then(function (col) {
-      return appManager.findAppByName(uid, newAppName).then(function (appInfo) {
+    return accountManager.ownerCan(uid, appName)
+    .then(function (col) {
+      return appManager.findAppByName(uid, newAppName)
+      .then(function (appInfo) {
         if (!_.isEmpty(appInfo)){
           throw new Error(newAppName + " Exist!");
-        } else {
-          return appManager.modifyApp(col.appid, {name: newAppName});
         }
+        return appManager.modifyApp(col.appid, {name: newAppName});
       });
     }).then(function () {
       res.send("");
@@ -286,14 +292,15 @@ router.post('/:appName/transfer/:email',
   if (!validator.isEmail(email)){
     return res.status(406).send("Invalid Email!");
   }
-  return accountManager.ownerCan(uid, appName).then(function (col) {
-    return accountManager.findUserByEmail(email).then(function (data) {
+  return accountManager.ownerCan(uid, appName)
+  .then(function (col) {
+    return accountManager.findUserByEmail(email)
+    .then(function (data) {
       if (_.eq(data.id, uid)) {
         throw new Error("You can't transfer to yourself!");
-      } else {
-        var appManager = new AppManager();
-        return appManager.transferApp(col.appid, uid, data.id);
       }
+      var appManager = new AppManager();
+      return appManager.transferApp(col.appid, uid, data.id);
     });
   }).then(function (data) {
     res.send(data);
@@ -309,16 +316,17 @@ router.post('/', middleware.checkToken, function (req, res, next) {
   if (_.isEmpty(appName)) {
     return res.status(406).send("Please input name!");
   }
-  appManager.findAppByName(uid, appName).then(function (appInfo) {
+  appManager.findAppByName(uid, appName)
+  .then(function (appInfo) {
     if (!_.isEmpty(appInfo)){
       throw new Error(appName + " Exist!");
-    } else {
-      return appManager.addApp(uid, appName, req.users.identical).then(function () {
-        var collaborators = {};
-        collaborators[req.users.email + ""] = {permission: "Owner"};
-        return {name: appName, collaborators: collaborators};
-      });
     }
+    return appManager.addApp(uid, appName, req.users.identical)
+    .then(function () {
+      var collaborators = {};
+      collaborators[req.users.email + ""] = {permission: "Owner"};
+      return {name: appName, collaborators: collaborators};
+    });
   }).then(function (data) {
     res.send({app: data});
   }).catch(function (e) {

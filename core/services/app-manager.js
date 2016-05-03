@@ -61,7 +61,8 @@ proto.deleteApp = function (appId) {
 };
 
 proto.modifyApp = function (appId, params) {
-  return models.Apps.update(params, {where: {id:appId}}).spread(function (affectedCount, affectedRows) {
+  return models.Apps.update(params, {where: {id:appId}})
+  .spread(function (affectedCount, affectedRows) {
     if (!_.gt(affectedCount, 0)) {
       throw Error('modify errors');
     }
