@@ -4,6 +4,7 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var helmet = require('helmet');
 
 var routes = require('./routes/index');
 var auth = require('./routes/auth');
@@ -11,6 +12,8 @@ var accessKeys = require('./routes/accessKeys');
 var account = require('./routes/account');
 var apps = require('./routes/apps');
 var app = express();
+app.use(helmet());
+app.disable('x-powered-by');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
