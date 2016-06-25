@@ -48,8 +48,9 @@ security.stringSha256Sync = function (contents) {
 }
 
 security.packageHashSync = function (jsonData) {
-  var manifestData = _.map(jsonData, function(v, k){
-    return k + ':' + v;
+  var sortedArr = security.sortJsonToArr(jsonData);
+  var manifestData = _.map(sortedArr, function(v){
+    return v.path + ':' + v.hash;
   });
   var manifestString = JSON.stringify(manifestData.sort());
   manifestString = _.replace(manifestString, /\\\//g, '/');
@@ -112,11 +113,18 @@ security.calcAllFileSha256 = function (directoryPath) {
               relativePath = slash(relativePath);
               data[relativePath] = value;
             });
-            data = sortObj(data);
             resolve(data);
           });
         }
       }
     });
   });
+}
+
+security.sortJsonToArr = function (json) {
+  var rs = [];
+  _.forIn(json, function (value, key) {
+    rs.push({path:key, hash: value})
+  });
+  return _.sortBy(rs, function(o) { return o.path; });
 }

@@ -29,7 +29,6 @@
     "sequelize-cli": "^2.3.1",
     "serve-favicon": "~2.3.0",
     "slash": "^1.0.0",
-    "sort-object": "^3.0.2",
     "validator": "^5.0.0",
     "yazl": "^2.3.0"
   },

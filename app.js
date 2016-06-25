@@ -23,6 +23,8 @@ app.set('view engine', 'jade');
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 if (app.get('env') === 'development') {
   app.use(logger('dev'));
+} else if (app.get('env') === 'production'){
+  app.use(logger('combined',{skip: function (req, res) { return res.statusCode < 400 }}));
 }
 
 app.use(bodyParser.json());
