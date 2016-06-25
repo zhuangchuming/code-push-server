@@ -249,7 +249,7 @@ proto.createDiffPackages = function (packageId, num) {
   });
 }
 
-proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, releaseUid) {
+proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, releaseUid, pubType) {
   var self = this;
   var appVersion = packageInfo.appVersion;
   var description = packageInfo.description;
@@ -266,29 +266,43 @@ proto.releasePackage = function (deploymentId, packageInfo, fileType, filePath, 
       }
     })
     .then(function (directoryPath) {
-      var dataCenterManager = require('./datacenter-manager')();
-      return dataCenterManager.storePackage(directoryPath)
-      .then(function (dataCenter) {
-        var packageHash = dataCenter.packageHash;
-        var manifestFile = dataCenter.manifestFilePath;
-        return self.existPackageHash(deploymentId, appVersion, packageHash)
-        .then(function (isExist) {
-          if (isExist){
-            throw new Error("The uploaded package is identical to the contents of the specified deployment's current release.");
+      return security.isAndroidPackage(directoryPath)
+      .then(function (isAndroid) {
+        if (pubType == 'android' ) {
+          if (!isAndroid){
+            throw new Error("it must be publish it by android type");
           }
-        })
-        .then(function () {
-          return security.qetag(manifestFile).then(function (manifestHash) {
-            return Q.allSettled([
-              common.uploadFileToQiniu(manifestHash, manifestFile),
-              common.uploadFileToQiniu(blobHash, filePath)
-            ]).spread(function (up1, up2) {
-              return [packageHash, manifestHash, blobHash];
+        } else if (pubType == 'ios') {
+          if (isAndroid){
+            throw new Error("it must be publish it by ios type");
+          }
+        }else {
+          throw new Error(`${pubType} does not support.`);
+        }
+        var dataCenterManager = require('./datacenter-manager')();
+        return dataCenterManager.storePackage(directoryPath)
+        .then(function (dataCenter) {
+          var packageHash = dataCenter.packageHash;
+          var manifestFile = dataCenter.manifestFilePath;
+          return self.existPackageHash(deploymentId, appVersion, packageHash)
+          .then(function (isExist) {
+            if (isExist){
+              throw new Error("The uploaded package is identical to the contents of the specified deployment's current release.");
+            }
+          })
+          .then(function () {
+            return security.qetag(manifestFile).then(function (manifestHash) {
+              return Q.allSettled([
+                common.uploadFileToQiniu(manifestHash, manifestFile),
+                common.uploadFileToQiniu(blobHash, filePath)
+              ]).spread(function (up1, up2) {
+                return [packageHash, manifestHash, blobHash];
+              });
             });
           });
         });
-
       });
+
     }).spread(function (packageHash, manifestHash, blobHash) {
       var stats = fs.statSync(filePath);
       var params = {

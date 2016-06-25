@@ -92,6 +92,32 @@ security.sha256AllFiles = function (files) {
   });
 }
 
+security.isAndroidPackage = function (directoryPath) {
+  return Promise(function (resolve, reject, notify) {
+    var recursiveFs = require("recursive-fs");
+    var path = require('path');
+    var slash = require("slash");
+    recursiveFs.readdirr(directoryPath, function (error, directories, files) {
+      if (error) {
+        reject(error);
+      } else {
+        if (files.length == 0) {
+          reject({message: "empty files"});
+        }else {
+          const AREGEX=/android\.bundle/
+          var isAndroid = false;
+          _.forIn(files, function (value) {
+            if (AREGEX.test(value)) {
+              isAndroid = true;
+            }
+          });
+          resolve(isAndroid);
+        }
+      }
+    });
+  });
+}
+
 security.calcAllFileSha256 = function (directoryPath) {
   return Promise(function (resolve, reject, notify) {
     var recursiveFs = require("recursive-fs");

@@ -103,6 +103,13 @@ router.post('/:appName/deployments/:deploymentName/release',
   var uid = req.users.id;
   var deployments = new Deployments();
   var packageManager = new PackageManager();
+  const AREGEX = /^android_/;
+  var pubType = '';
+  if (AREGEX.test(appName)) {
+    pubType = 'android';
+  } else {
+    pubType = 'ios';
+  }
   accountManager.collaboratorCan(uid, appName)
   .then(function (col) {
     return deployments.findDeloymentByName(deploymentName, col.appid)
@@ -112,7 +119,7 @@ router.post('/:appName/deployments/:deploymentName/release',
       }
       return packageManager.parseReqFile(req)
       .then(function (data) {
-        return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid)
+        return packageManager.releasePackage(deploymentInfo.id, data.packageInfo, data.package.type, data.package.path, uid, pubType)
         .finally(function (d) {
           common.deleteFolderSync(data.package.path);
         });
@@ -320,10 +327,14 @@ router.post('/', middleware.checkToken, function (req, res, next) {
   if (_.isEmpty(appName)) {
     return res.status(406).send("Please input name!");
   }
+  const REGEX = /^[android_|ios_]/;
   appManager.findAppByName(uid, appName)
   .then(function (appInfo) {
     if (!_.isEmpty(appInfo)){
       throw new Error(appName + " Exist!");
+    }
+    if (!REGEX.test(appName)) {
+      throw new Error(`appName have to point android_ or ios_ prefix! like android_${appName} ios_${appName}`);
     }
     return appManager.addApp(uid, appName, req.users.identical)
     .then(function () {
