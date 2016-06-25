@@ -95,7 +95,6 @@ security.sha256AllFiles = function (files) {
 security.calcAllFileSha256 = function (directoryPath) {
   return Promise(function (resolve, reject, notify) {
     var recursiveFs = require("recursive-fs");
-    var sortObj = require('sort-object');
     var path = require('path');
     var slash = require("slash");
     recursiveFs.readdirr(directoryPath, function (error, directories, files) {
