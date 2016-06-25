@@ -40,11 +40,15 @@ common.createFileFromRequest = function (url, filePath) {
 
 common.move = function (sourceDst, targertDst) {
   return Promise(function (resolve, reject, notify) {
-    fsextra.move(sourceDst, targertDst, function (err) {
+    var ncp = require('ncp').ncp;
+    ncp.limit = 16;
+    ncp.clobber = true;
+    ncp.move(sourceDst, targertDst, function (err) {
       if (err) {
         return reject(err);
       }
       resolve();
+      common.deleteFolder(sourceDst);
     });
   });
 };
