@@ -32,7 +32,7 @@ $ CONFIG_FILE=/path/to/config.json NODE_ENV=production node ./bin/www
 Use code-push-cli manager CodePushServer
 
 ```shell
-$ npm i code-push-cli@1.7.0-beta -g
+$ npm i code-push-cli@lastest -g
 $ code-push login http://127.0.0.1:3000 #login in browser account:admin password:123456
 ```
 
@@ -41,7 +41,7 @@ $ code-push login http://127.0.0.1:3000 #login in browser account:admin password
 ## react-native-code-push
 
 ```shell
-npm i react-native-code-push@1.8.0-beta -g
+npm i react-native-code-push@lastest -g
 ```
 
 ## config react-native project
