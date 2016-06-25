@@ -43,7 +43,7 @@ common.move = function (sourceDst, targertDst) {
     var ncp = require('ncp').ncp;
     ncp.limit = 16;
     ncp.clobber = true;
-    ncp.move(sourceDst, targertDst, function (err) {
+    ncp(sourceDst, targertDst, function (err) {
       if (err) {
         return reject(err);
       }
