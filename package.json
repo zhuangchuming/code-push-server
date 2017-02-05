@@ -43,6 +43,7 @@
     "body-parser": "^1.15.2",
     "cookie-parser": "^1.4.3",
     "debug": "^2.3.3",
+    "diff-match-patch": "^1.0.0",
     "express": "^4.14.0",
     "formidable": "^1.0.17",
     "fs-extra": "^1.0.0",
