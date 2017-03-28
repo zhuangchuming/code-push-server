@@ -2,23 +2,14 @@ var config = {};
 config.development = {
   // Config for database, only support mysql.
   db: {
-    username:  "sunyixin",
-    password:  "Gaomu123",
+    username:  "chuming",
+    password:  "123456",
     database:  "codepush",
     host:  "127.0.0.1",
     port:  3306,
     dialect: "mysql",
     logging: false
   },
-  // db: {
-  //   username:  "chuming",
-  //   password:  "123456",
-  //   database:  "codepush",
-  //   host:  "127.0.0.1",
-  //   port:  3306,
-  //   dialect: "mysql",
-  //   logging: false
-  // },
   // Config for qiniu (http://www.qiniu.com/) cloud storage when storageType value is "qiniu".
   qiniu: {
     accessKey: "",
@@ -45,19 +36,11 @@ config.development = {
     downloadUrl: "", // binary files download host address.
   },
   // Config for local storage when storageType value is "local".
-  // local: {
-  //   // Binary files storage dir, Do not use tmpdir and it's public download dir.
-  //   storageDir: "/Users/gaomu/Documents/workspaces/chuming.zhuang/data/codepushdata/storage",
-  //   // Binary files download host address which Code Push Server listen to. the files storage in storageDir.
-  //   downloadUrl:  "http://172.20.10.7:2999/download",
-  //   // public static download spacename.
-  //   public:  '/download'
-  // },
   local: {
     // Binary files storage dir, Do not use tmpdir and it's public download dir.
-    storageDir: "/home/data/gaomu_deploy/data/codepushdata/storage",
+    storageDir: "/Users/gaomu/Documents/workspaces/chuming.zhuang/data/codepushdata/storage",
     // Binary files download host address which Code Push Server listen to. the files storage in storageDir.
-    downloadUrl:  "http://www.gaomuxuexi.com:2999/download",
+    downloadUrl:  "http://172.20.10.7:2999/download",
     // public static download spacename.
     public:  '/download'
   },
@@ -78,8 +61,7 @@ config.development = {
     // create patch updates's number. default value is 3
     diffNums: 3,
     // data dir for caclulate diff files. it's optimization.
-    // dataDir: "/Users/gaomu/Documents/workspaces/chuming.zhuang/data/codepushdata/data",
-    dataDir: "/home/data/gaomu_deploy/data/codepushdata/data",
+    dataDir: "/Users/gaomu/Documents/workspaces/chuming.zhuang/data/codepushdata/data",
     // storageType which is your binary package files store. options value is ("local" | "qiniu" | "s3")
     storageType: "local",
     // options value is (true | false), when it's true, it will cache updateCheck results in redis.
